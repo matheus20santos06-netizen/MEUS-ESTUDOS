@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App Meus Estudos Pro | ADM Matheus</title>
+    <title>App Meus Estudos Pro</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- jsPDF para exportação de relatório em PDF -->
@@ -28,13 +28,22 @@
         .custom-box-text { color: var(--text-box); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Switch animado */
+        .switch-checkbox:checked + .switch-label {
+            background-color: #22c55e;
+        }
+        .switch-checkbox:checked + .switch-label .switch-ball {
+            transform: translateX(1.25rem);
+        }
     </style>
 </head>
 <body class="p-4 flex flex-col items-center pb-24">
 
     <!-- CABEÇALHO -->
     <header class="w-full max-w-md text-center mb-4">
-        <h1 class="text-xl font-bold tracking-wide">APP MEUS ESTUDOS | ADM MATHEUS 📚</h1>
+        <h1 class="text-xl font-bold tracking-wide">APP MEUS ESTUDOS 📚</h1>
+        <div id="saudacaoUsuario" class="mt-1 text-xs text-sky-400 font-semibold">Olá! Carregando...</div>
         <div id="statusVoz" class="mt-2 inline-block bg-purple-600 text-white text-xs px-3 py-1 rounded-full font-semibold">
             ⚡ MODO PRO ATIVO
         </div>
@@ -79,7 +88,13 @@
             <!-- LISTA DE AULAS -->
             <div class="bg-slate-900/80 p-3 rounded-xl shadow border border-slate-800">
                 <div class="flex justify-between items-center mb-3">
-                    <h2 id="tituloMateriaAtual" class="font-bold text-sm text-sky-400">Aulas</h2>
+                    <div class="flex items-center gap-2">
+                        <h2 id="tituloMateriaAtual" class="font-bold text-sm text-sky-400">Aulas</h2>
+                        <div id="containerCorMateria" class="hidden items-center gap-1 text-[10px] bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                            <span>Cor:</span>
+                            <input type="color" id="inputCorMateriaAtual" onchange="salvarCorMateriaAtual(this.value)" class="w-4 h-4 rounded bg-transparent cursor-pointer border-0">
+                        </div>
+                    </div>
                     <button onclick="abrirModalAddAula()" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Adicionar Aula</button>
                 </div>
                 <div id="aulasContainer" class="space-y-2 max-h-52 overflow-y-auto">
@@ -152,6 +167,28 @@
                     </div>
                 </div>
 
+                <!-- MODO INFANTIL / CONTROLE PARENTAL -->
+                <div class="pt-2 border-t border-slate-800 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span class="text-xs font-bold text-emerald-400">🛡️ Modo Infantil / Controle</span>
+                            <p class="text-[10px] text-slate-400">Ative para permitir o monitoramento via link.</p>
+                        </div>
+                        <!-- Botão Switch Animado -->
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="switchModoInfantil" onchange="alternarModoInfantil(this.checked)" class="switch-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-0.5 left-0.5 transition-all duration-300">
+                            <label for="switchModoInfantil" class="switch-label block overflow-hidden h-6 rounded-full bg-red-600 cursor-pointer transition-colors duration-300"></label>
+                        </div>
+                    </div>
+                    <div id="painelLinkInfantil" class="hidden space-y-2 bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-[11px]">
+                        <span class="text-slate-300 font-semibold block">Link de Conexão do Estudante:</span>
+                        <div class="flex gap-2">
+                            <input type="text" id="inputLinkConexao" readonly class="bg-slate-900 border border-slate-800 text-[10px] px-2 py-1 rounded w-full text-slate-300 font-mono">
+                            <button onclick="copiarLinkConexao()" class="bg-sky-600 hover:bg-sky-500 px-2 py-1 rounded text-white font-bold">Copiar</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Configuração de Dias de Revisão -->
                 <div class="pt-2 border-t border-slate-800 space-y-1">
                     <label class="text-xs font-bold text-slate-300">Dias de Revisão Padrão:</label>
@@ -198,7 +235,22 @@
 
     <!-- SCRIPT DO APLICATIVO -->
     <script>
-        let appData = JSON.parse(localStorage.getItem('meusEstudosProData')) || {
+        // Gerenciamento de Identidade Independente por Usuário/Dispositivo
+        let userId = localStorage.getItem('meusEstudosUserId');
+        if (!userId) {
+            userId = 'user_' + Math.random().toString(36).substring(2, 9);
+            localStorage.setItem('meusEstudosUserId', userId);
+        }
+
+        const STORAGE_KEY = 'meusEstudosProData_' + userId;
+
+        // Verificar parâmetro de URL para Modo Observador
+        const urlParams = new URLSearchParams(window.location.search);
+        const modoObservadorParam = urlParams.get('modo') === 'observador';
+        const targetUserId = urlParams.get('alvo');
+
+        let appData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
+            nomeUsuario: "",
             materias: [],
             materiaAtual: null,
             questoes: [],
@@ -210,6 +262,10 @@
                 acertos: 0,
                 erros: 0,
                 diasRevisao: 7,
+                horaEntrada: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                horaSaida: "-",
+                aulasAssistidasLog: [],
+                modoInfantilAtivo: false,
                 ultimoAcesso: new Date().toDateString()
             },
             config: {
@@ -221,14 +277,41 @@
             }
         };
 
-        setInterval(() => {
-            appData.estatisticas.tempoSegundos++;
+        // Registrar saída ao fechar janela
+        window.addEventListener('beforeunload', () => {
+            if (!modoObservadorParam) {
+                appData.estatisticas.horaSaida = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                salvarDados();
+            }
+        });
+
+        // Configurar nome do usuário se não existir
+        if (!appData.nomeUsuario && !modoObservadorParam) {
+            let nomeTemp = prompt("Seja bem-vindo(a)! Como você deseja ser chamado(a)?");
+            appData.nomeUsuario = nomeTemp ? nomeTemp.trim() : "Estudante";
             salvarDados();
-            atualizarEstatisticasUI();
+        }
+
+        // Se estiver no modo observador, carregar dados do aluno alvo (se compartilhado no mesmo navegador ou via localStorage compartilhado)
+        if (modoObservadorParam && targetUserId) {
+            const dadosAlvo = JSON.parse(localStorage.getItem('meusEstudosProData_' + targetUserId));
+            if (dadosAlvo) {
+                appData = dadosAlvo;
+            }
+        }
+
+        setInterval(() => {
+            if (!modoObservadorParam) {
+                appData.estatisticas.tempoSegundos++;
+                salvarDados();
+                atualizarEstatisticasUI();
+            }
         }, 1000);
 
         function salvarDados() {
-            localStorage.setItem('meusEstudosProData', JSON.stringify(appData));
+            if (!modoObservadorParam) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+            }
         }
 
         function aplicarConfiguracoes() {
@@ -243,6 +326,29 @@
             }
             document.getElementById('blocoNotas').value = appData.notas || '';
             document.getElementById('inputDiasRevisao').value = appData.estatisticas.diasRevisao || 7;
+            
+            const switchInf = document.getElementById('switchModoInfantil');
+            const painelLink = document.getElementById('painelLinkInfantil');
+            if (switchInf) {
+                switchInf.checked = appData.estatisticas.modoInfantilAtivo || false;
+                if (appData.estatisticas.modoInfantilAtivo) {
+                    painelLink.classList.remove('hidden');
+                    const linkObs = `${window.location.origin}${window.location.pathname}?modo=observador&alvo=${userId}`;
+                    document.getElementById('inputLinkConexao').value = linkObs;
+                } else {
+                    painelLink.classList.add('hidden');
+                }
+            }
+
+            const saudacaoEl = document.getElementById('saudacaoUsuario');
+            if (saudacaoEl) {
+                if (modoObservadorParam) {
+                    saudacaoEl.innerText = `👁️ MODO OBSERVADOR (Painel do Responsável - Aluno: ${appData.nomeUsuario || 'Estudante'})`;
+                    saudacaoEl.className = "mt-1 text-xs text-amber-400 font-bold";
+                } else {
+                    saudacaoEl.innerText = `👋 Olá, ${appData.nomeUsuario || 'Estudante'}! Seja muito bem-vindo(a).`;
+                }
+            }
         }
 
         function mudarAba(aba) {
@@ -266,16 +372,23 @@
             renderizarQuestoes();
             renderizarLivros();
             atualizarEstatisticasUI();
+            
+            if (modoObservadorParam) {
+                // Se estiver no modo observador, bloquear edições desnecessárias ou ocultar botões de escrita se preferir
+            }
         }
 
         function renderizarMaterias() {
             const containerMat = document.getElementById('materiasContainer');
             containerMat.innerHTML = '';
 
+            const containerCorMateria = document.getElementById('containerCorMateria');
+
             if (appData.materias.length === 0) {
-                containerMat.innerHTML = `<span class="text-xs text-slate-500 py-1">Nenhuma matéria criada. Clique em '+ Nova Matéria'.</span>`;
+                containerMat.innerHTML = `<span class="text-xs text-slate-500 py-1">Nenhuma matéria criada.</span>`;
                 document.getElementById('tituloMateriaAtual').innerText = "Aulas (Nenhuma matéria)";
                 document.getElementById('aulasContainer').innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Crie uma matéria para adicionar aulas.</p>`;
+                if (containerCorMateria) containerCorMateria.classList.add('hidden');
                 return;
             }
 
@@ -284,22 +397,35 @@
             }
 
             appData.materias.forEach(mat => {
-                const btn = document.createElement('button');
+                const wrapper = document.createElement('div');
                 const ativo = mat.id === appData.materiaAtual;
-                btn.className = `px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition whitespace-nowrap ${ativo ? 'bg-blue-600 text-white shadow' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`;
-                btn.innerText = mat.nome;
-                btn.onclick = () => {
-                    appData.materiaAtual = mat.id;
-                    salvarDados();
-                    renderizarMaterias();
-                };
-                containerMat.appendChild(btn);
+                
+                let estiloCor = "";
+                if (ativo && mat.corCustom) {
+                    estiloCor = `background-color: ${mat.corCustom}; color: #ffffff;`;
+                }
+
+                wrapper.className = `flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold uppercase transition whitespace-nowrap cursor-pointer ${ativo ? (mat.corCustom ? '' : 'bg-blue-600 text-white shadow') : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`;
+                if (estiloCor) wrapper.style = estiloCor;
+
+                wrapper.innerHTML = `
+                    <span onclick="selecionarMateria('${mat.id}')" class="flex-1">${mat.nome}</span>
+                    ${modoObservadorParam ? '' : `<button onclick="event.stopPropagation(); removerMateria('${mat.id}')" class="text-slate-400 hover:text-red-300 text-[10px] ml-1 px-1">✕</button>`}
+                `;
+                containerMat.appendChild(wrapper);
             });
 
             const materia = appData.materias.find(m => m.id === appData.materiaAtual);
             if (!materia) return;
 
             document.getElementById('tituloMateriaAtual').innerText = `Aulas - ${materia.nome}`;
+            
+            if (containerCorMateria) {
+                containerCorMateria.classList.remove('hidden');
+                containerCorMateria.classList.add('flex');
+                document.getElementById('inputCorMateriaAtual').value = materia.corCustom || '#2563eb';
+            }
+
             const containerAulas = document.getElementById('aulasContainer');
             containerAulas.innerHTML = '';
 
@@ -311,25 +437,63 @@
             materia.aulas.forEach((aula, index) => {
                 const div = document.createElement('div');
                 div.className = `flex items-center justify-between p-2.5 rounded-lg custom-box-border bg-slate-800/50 hover:bg-slate-800 cursor-pointer transition`;
+                
+                let infoMinuto = aula.ultimoMinuto ? ` (Até ${aula.ultimoMinuto})` : '';
                 div.innerHTML = `
-                    <div class="flex items-center gap-3 flex-1 overflow-hidden" onclick="carregarVideo('${aula.url}')">
+                    <div class="flex items-center gap-3 flex-1 overflow-hidden" onclick="carregarVideo('${materia.id}', ${index}, '${aula.url}')">
                         <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">${index + 1}</span>
-                        <span class="text-xs font-medium custom-box-text truncate">${aula.titulo}</span>
+                        <span class="text-xs font-medium custom-box-text truncate">${aula.titulo}${infoMinuto}</span>
                     </div>
-                    <button onclick="removerAula('${materia.id}', ${index})" class="text-slate-500 hover:text-red-400 text-xs px-2 py-1">✕</button>
+                    ${modoObservadorParam ? '' : `<button onclick="removerAula('${materia.id}', ${index})" class="text-slate-500 hover:text-red-400 text-xs px-2 py-1">✕</button>`}
                 `;
                 containerAulas.appendChild(div);
             });
         }
 
-        function carregarVideo(url) {
+        function selecionarMateria(id) {
+            appData.materiaAtual = id;
+            salvarDados();
+            renderizarMaterias();
+        }
+
+        function salvarCorMateriaAtual(novaCor) {
+            if (modoObservadorParam) return;
+            const materia = appData.materias.find(m => m.id === appData.materiaAtual);
+            if (materia) {
+                materia.corCustom = novaCor;
+                salvarDados();
+                renderizarMaterias();
+            }
+        }
+
+        let aulaAtivaIndexRef = null;
+        let materiaAtivaIdRef = null;
+
+        function carregarVideo(materiaId, index, url) {
+            materiaAtivaIdRef = materiaId;
+            aulaAtivaIndexRef = index;
+
             const videoId = extrairIdYouTube(url);
             const container = document.getElementById('videoContainer');
             if (!videoId) {
                 container.innerHTML = `<span class="text-xs text-red-400">Link do YouTube inválido</span>`;
                 return;
             }
-            container.innerHTML = `<iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+            container.innerHTML = `<iframe id="iframeVideo" class="w-full h-full" src="https://www.youtube.com/embed/${videoId}?enablejsapi=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+
+            // Registrar aula assistida com horário e estimativa
+            if (!modoObservadorParam) {
+                const mat = appData.materias.find(m => m.id === materiaId);
+                if (mat && mat.aulas[index]) {
+                    mat.aulas[index].ultimoMinuto = "Início/Assistindo";
+                    appData.estatisticas.aulasAssistidasLog.push({
+                        materia: mat.nome,
+                        aula: mat.aulas[index].titulo,
+                        horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    });
+                    salvarDados();
+                }
+            }
         }
 
         function mudarTempo(segundos) {}
@@ -342,17 +506,33 @@
         }
 
         function abrirModalMateria() {
+            if (modoObservadorParam) return;
             const nome = prompt("Digite o nome da nova matéria (ex: Português, Matemática, Física):");
             if (nome) {
                 const id = nome.toLowerCase().replace(/\s+/g, '-');
-                appData.materias.push({ id, nome: nome.toUpperCase(), aulas: [] });
+                appData.materias.push({ id, nome: nome.toUpperCase(), aulas: [], corCustom: '' });
                 appData.materiaAtual = id;
                 salvarDados();
                 renderizar();
             }
         }
 
+        function removerMateria(id) {
+            if (modoObservadorParam) return;
+            if (confirm("Deseja realmente remover esta matéria e todas as suas aulas?")) {
+                appData.materias = appData.materias.filter(m => m.id !== id);
+                if (appData.materias.length > 0) {
+                    appData.materiaAtual = appData.materias[0].id;
+                } else {
+                    appData.materiaAtual = null;
+                }
+                salvarDados();
+                renderizar();
+            }
+        }
+
         function abrirModalAddAula() {
+            if (modoObservadorParam) return;
             if (appData.materias.length === 0) {
                 alert("Crie uma matéria primeiro!");
                 return;
@@ -364,14 +544,15 @@
 
             const materia = appData.materias.find(m => m.id === appData.materiaAtual);
             if (materia) {
-                materia.aulas.push({ titulo, url });
+                materia.aulas.push({ titulo, url, ultimoMinuto: "0 min" });
                 salvarDados();
                 renderizar();
-                carregarVideo(url);
+                carregarVideo(materia.id, materia.aulas.length - 1, url);
             }
         }
 
         function removerAula(materiaId, index) {
+            if (modoObservadorParam) return;
             const materia = appData.materias.find(m => m.id === materiaId);
             if (materia) {
                 materia.aulas.splice(index, 1);
@@ -381,6 +562,7 @@
         }
 
         function abrirModalAddQuestao() {
+            if (modoObservadorParam) return;
             const pergunta = prompt("Cole ou digite a pergunta da questão:");
             if (!pergunta) return;
 
@@ -417,7 +599,7 @@
             container.innerHTML = '';
 
             if (appData.questoes.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Nenhuma questão cadastrada. Clique em '+ Nova'.</p>`;
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Nenhuma questão cadastrada.</p>`;
                 return;
             }
 
@@ -427,7 +609,7 @@
                 div.innerHTML = `
                     <div class="flex justify-between items-start">
                         <span class="text-xs font-bold text-amber-400">Questão ${idx + 1}</span>
-                        <button onclick="removerQuestao(${idx})" class="text-slate-500 hover:text-red-400 text-xs">✕</button>
+                        ${modoObservadorParam ? '' : `<button onclick="removerQuestao(${idx})" class="text-slate-500 hover:text-red-400 text-xs">✕</button>`}
                     </div>
                     <p class="text-xs text-slate-200">${q.pergunta}</p>
                 `;
@@ -436,6 +618,7 @@
         }
 
         function removerQuestao(index) {
+            if (modoObservadorParam) return;
             appData.questoes.splice(index, 1);
             salvarDados();
             renderizar();
@@ -457,10 +640,12 @@
                 if (qIndex >= appData.questoes.length) {
                     const pctAcerto = Math.round((acertosSessao / appData.questoes.length) * 100);
                     
-                    appData.estatisticas.questoesRespondidas += appData.questoes.length;
-                    appData.estatisticas.acertos += acertosSessao;
-                    appData.estatisticas.erros += errosSessao;
-                    salvarDados();
+                    if (!modoObservadorParam) {
+                        appData.estatisticas.questoesRespondidas += appData.questoes.length;
+                        appData.estatisticas.acertos += acertosSessao;
+                        appData.estatisticas.erros += errosSessao;
+                        salvarDados();
+                    }
 
                     let htmlRelatorio = `
                         <div class="text-center space-y-2">
@@ -570,11 +755,13 @@
         }
 
         function salvarNotas() {
+            if (modoObservadorParam) return;
             appData.notas = document.getElementById('blocoNotas').value;
             salvarDados();
         }
 
         function abrirModalAddLivro() {
+            if (modoObservadorParam) return;
             const titulo = prompt("Digite o título do livro ou apostila:");
             if (!titulo) return;
             const url = prompt("Cole o link direto do arquivo PDF (URL):");
@@ -590,7 +777,7 @@
             container.innerHTML = '';
 
             if (appData.livros.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Nenhum livro cadastrado. Clique em '+ Adicionar Livro'.</p>`;
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Nenhum livro cadastrado.</p>`;
                 return;
             }
 
@@ -602,13 +789,14 @@
                         <span class="text-xs font-bold text-emerald-400">📖</span>
                         <span class="text-xs font-medium text-slate-200 truncate">${livro.titulo}</span>
                     </div>
-                    <button onclick="removerLivro(${idx})" class="text-slate-500 hover:text-red-400 text-xs px-2 py-1">✕</button>
+                    ${modoObservadorParam ? '' : `<button onclick="removerLivro(${idx})" class="text-slate-500 hover:text-red-400 text-xs px-2 py-1">✕</button>`}
                 `;
                 container.appendChild(div);
             });
         }
 
         function removerLivro(index) {
+            if (modoObservadorParam) return;
             appData.livros.splice(index, 1);
             salvarDados();
             renderizarLivros();
@@ -625,14 +813,50 @@
 
             document.getElementById('statTaxaAcerto').innerText = `${taxaAcerto}%`;
             document.getElementById('statTaxaErro').innerText = `${taxaErro}%`;
+
+            // Se estiver no modo observador, adicionar histórico detalhado visual no stats
+            if (modoObservadorParam) {
+                let divObs = document.getElementById('observadorDetalhesExtra');
+                if (!divObs) {
+                    divObs = document.createElement('div');
+                    divObs.id = 'observadorDetalhesExtra';
+                    divObs.className = "bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2 mt-2 text-xs";
+                    document.querySelector('#secao-estatisticas > div').appendChild(divObs);
+                }
+                
+                let logAulasHtml = appData.estatisticas.aulasAssistidasLog.map(a => `<li>• ${a.horario} - ${a.materia}: ${a.aula}</li>`).join('') || '<li>Nenhuma aula iniciada ainda.</li>';
+
+                divObs.innerHTML = `
+                    <h3 class="font-bold text-amber-400">🔍 Painel de Auditoria do Responsável</h3>
+                    <p><b>Entrada no app:</b> ${appData.estatisticas.horaEntrada || '-'}</p>
+                    <p><b>Última saída:</b> ${appData.estatisticas.horaSaida || '-'}</p>
+                    <p class="font-semibold pt-1">Histórico de Aulas Vistas:</p>
+                    <ul class="max-h-32 overflow-y-auto space-y-1 text-[11px] text-slate-300">${logAulasHtml}</ul>
+                `;
+            }
+        }
+
+        function alternarModoInfantil(ativo) {
+            appData.estatisticas.modoInfantilAtivo = ativo;
+            salvarDados();
+            aplicarConfiguracoes();
+        }
+
+        function copiarLinkConexao() {
+            const input = document.getElementById('inputLinkConexao');
+            input.select();
+            navigator.clipboard.writeText(input.value);
+            alert("Link de conexão copiado! Envie para o dispositivo do responsável.");
         }
 
         function atualizarDiasRevisao(valor) {
+            if (modoObservadorParam) return;
             appData.estatisticas.diasRevisao = parseInt(valor) || 7;
             salvarDados();
         }
 
         function abrirModalPersonalizar() {
+            if (modoObservadorParam) return;
             let modalAntigo = document.getElementById('modalPersonalizar');
             if (modalAntigo) modalAntigo.remove();
 
@@ -692,6 +916,7 @@
         }
 
         function abrirModalFundo() {
+            if (modoObservadorParam) return;
             const urlImg = prompt("Cole o link direto da imagem de fundo:", appData.config.bgImagem);
             if (urlImg !== null) {
                 appData.config.bgImagem = urlImg;
@@ -701,7 +926,7 @@
         }
 
         function abrirModalAjuda() {
-            alert("❓ COMO USAR O APP MEUS ESTUDOS:\n\n1. ESTUDOS: Crie matérias e adicione links de vídeos do YouTube em formato de aulas.\n2. QUESTÕES: Cadastre perguntas com ou sem alternativas e resolva simulados com cálculo de desempenho e relatório PDF.\n3. NOTAS: Bloco de anotações com salvamento automático.\n4. LIVROS: Adicione links de PDFs de apostilas para leitura rápida.\n5. ESTATÍSTICAS: Acompanhe o tempo de estudo diário, taxa de acerto e configure seus dias de revisão.");
+            alert("❓ COMO USAR O APP MEUS ESTUDOS:\n\n1. ESTUDOS: Crie matérias e adicione links de vídeos do YouTube em formato de aulas.\n2. QUESTÕES: Cadastre perguntas com ou sem alternativas e resolva simulados com cálculo de desempenho e relatório PDF.\n3. MODO INFANTIL: Ative nas estatísticas para gerar um link exclusivo de monitoramento para os pais (Modo Observador).");
         }
 
         function copiarPix() {
@@ -711,8 +936,9 @@
         }
 
         function confirmarResetTotal() {
+            if (modoObservadorParam) return;
             if (confirm("⚠️ ATENÇÃO: Deseja realmente apagar todos os dados, notas, questões e reiniciar o aplicativo?")) {
-                localStorage.removeItem('meusEstudosProData');
+                localStorage.removeItem(STORAGE_KEY);
                 location.reload();
             }
         }
