@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Meus Estudos</title>
+    <!-- Tailwind CSS via CDN para estilização rápida e moderna -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --border-video: #3b82f6;
+            --border-box: #1e293b;
+            --text-box: #ffffff;
+            --bg-custom: #0f172a;
+        }
+        body {
+            background-color: var(--bg-custom);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        .custom-video-border { border: 2px solid var(--border-video); }
+        .custom-box-border { border: 1px solid var(--border-box); }
+        .custom-box-text { color: var(--text-box); }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center">
+
+    <!-- CABEÇALHO -->
+    <header class="w-full max-w-md text-center mb-4">
+        <h1 class="text-xl font-bold tracking-wide">APP MEUS ESTUDOS | ADM MATHEUS 📚</h1>
+        <div id="statusVoz" class="mt-2 inline-block bg-purple-600 text-white text-xs px-3 py-1 rounded-full font-semibold">
+            🔊 MODO ESTUDO ATIVO
+        </div>
+    </header>
+
+    <div class="w-full max-w-md space-y-4">
+
+        <!-- PLAYER DE VÍDEO -->
+        <div class="w-full bg-slate-900 rounded-xl p-2 shadow-lg custom-video-border relative overflow-hidden">
+            <div id="videoContainer" class="relative w-full aspect-video bg-black rounded-lg flex items-center justify-center overflow-hidden">
+                <span class="text-xs text-slate-400">Nenhuma aula selecionada</span>
+            </div>
+            <!-- Controles de Vídeo -->
+            <div class="flex justify-between items-center mt-2 gap-2">
+                <button onclick="mudarTempo(-10)" class="flex-1 bg-slate-800 hover:bg-slate-700 py-1.5 rounded text-xs font-bold">-10s</button>
+                <button onclick="mudarTempo(10)" class="flex-1 bg-slate-800 hover:bg-slate-700 py-1.5 rounded text-xs font-bold">+10s</button>
+                <button onclick="telaCheia()" class="flex-2 bg-sky-600 hover:bg-sky-500 py-1.5 px-3 rounded text-xs font-bold flex items-center justify-center gap-1">📺 TELA CHEIA</button>
+            </div>
+        </div>
+
+        <!-- SELEÇÃO DE MATÉRIAS (BOXES) -->
+        <div class="text-center text-sm font-medium text-slate-300">
+            Selecione uma matéria ou adicione abaixo:
+        </div>
+        <div id="materiasContainer" class="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+            <!-- Gerado via JS -->
+        </div>
+
+        <!-- LISTA DE AULAS DA MATÉRIA ATUAL -->
+        <div class="bg-slate-900/80 p-3 rounded-xl shadow border border-slate-800">
+            <div class="flex justify-between items-center mb-3">
+                <h2 id="tituloMateriaAtual" class="font-bold text-sm text-sky-400">Aulas</h2>
+                <button onclick="abrirModalAddAula()" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Adicionar Aula</button>
+            </div>
+            <div id="aulasContainer" class="space-y-2 max-h-60 overflow-y-auto">
+                <!-- Gerado via JS -->
+            </div>
+        </div>
+
+        <!-- PAINEL DE CONTROLE / GERENCIAMENTO -->
+        <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-3">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">🛠️ Gerenciar & Personalizar</h3>
+            
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="abrirModalMateria()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">+ Nova Matéria</button>
+                <button onclick="abrirModalPersonalizar()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">🎨 Personalizar Cores</button>
+                <button onclick="abrirModalFundo()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">🖼️ Trocar Fundo</button>
+                <button onclick="abrirModalAjuda()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">❓ Ajuda / Como Usar</button>
+            </div>
+        </div>
+
+        <!-- APOIAR PROJETO (PIX) -->
+        <div class="bg-gradient-to-r from-amber-500/10 to-amber-600/20 border border-amber-500/30 p-3 rounded-xl text-center space-y-1">
+            <p class="text-xs font-bold text-amber-400">⭐ Apoie este Projeto!</p>
+            <p class="text-[11px] text-slate-300">Ajude o criador mantendo a plataforma ativa com qualquer valor via Pix:</p>
+            <div class="bg-slate-950 p-2 rounded border border-amber-500/20 flex items-center justify-between gap-2 mt-1">
+                <span id="chavePix" class="text-[10px] text-amber-300 font-mono truncate">ae65caa9-f060-4a6e-910e-d48a1bd9ec36</span>
+                <button onclick="copiarPix()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] px-2 py-1 rounded font-bold">Copiar</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAIS DE SUPORTE (Criados dinamicamente via JS) -->
+    <div id="modalContainer"></div>
+
+    <!-- SCRIPT DE FUNCIONALIDADES -->
+    <script>
+        // Estado inicial do Aplicativo
+        let appData = JSON.parse(localStorage.getItem('meusEstudosData')) || {
+            materias: [
+                { id: 'saude', nome: 'SAÚDE', aulas: [ { titulo: 'Saúde - Aula 1', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' } ] }
+            ],
+            materiaAtual: 'saude',
+            config: {
+                corVideo: '#3b82f6',
+                corBox: '#1e293b',
+                corTexto: '#ffffff',
+                bgImagem: '',
+                bgCor: '#0f172a'
+            }
+        };
+
+        let player = null;
+
+        function salvarDados() {
+            localStorage.setItem('meusEstudosData', JSON.stringify(appData));
+        }
+
+        function aplicarConfiguracoes() {
+            document.documentElement.style.setProperty('--border-video', appData.config.corVideo);
+            document.documentElement.style.setProperty('--border-box', appData.config.corBox);
+            document.documentElement.style.setProperty('--text-box', appData.config.corTexto);
+            if(appData.config.bgImagem) {
+                document.body.style.backgroundImage = `url('${appData.config.bgImagem}')`;
+            } else {
+                document.body.style.backgroundImage = 'none';
+                document.body.style.backgroundColor = appData.config.bgCor;
+            }
+        }
+
+        // Extrair ID do YouTube
+        function extrairIdYouTube(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
+        // Renderizar Interface
+        function renderizar() {
+            aplicarConfiguracoes();
+            
+            // Renderizar Abas de Matérias
+            const containerMat = document.getElementById('materiasContainer');
+            containerMat.innerHTML = '';
+            appData.materias.forEach(mat => {
+                const btn = document.createElement('button');
+                const ativo = mat.id === appData.materiaAtual;
+                btn.className = `px-4 py-2 rounded-lg text-xs font-bold uppercase transition whitespace-nowrap ${ativo ? 'bg-blue-600 text-white shadow' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`;
+                btn.innerText = mat.nome;
+                btn.onclick = () => {
+                    appData.materiaAtual = mat.id;
+                    salvarDados();
+                    renderizar();
+                };
+                containerMat.appendChild(btn);
+            });
+
+            // Renderizar Aulas da Matéria Selecionada
+            const materia = appData.materias.find(m => m.id === appData.materiaAtual) || appData.materias[0];
+            if (!materia) return;
+
+            document.getElementById('tituloMateriaAtual').innerText = `Aulas - ${materia.nome}`;
+            const containerAulas = document.getElementById('aulasContainer');
+            containerAulas.innerHTML = '';
+
+            if (materia.aulas.length === 0) {
+                containerAulas.innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Nenhuma aula cadastrada nesta matéria.</p>`;
+                return;
+            }
+
+            materia.aulas.forEach((aula, index) => {
+                const div = document.createElement('div');
+                div.className = `flex items-center justify-between p-2.5 rounded-lg custom-box-border bg-slate-800/50 hover:bg-slate-800 cursor-pointer transition`;
+                div.innerHTML = `
+                    <div class="flex items-center gap-3" onclick="carregarVideo('${aula.url}')">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">${index + 1}</span>
+                        <span class="text-xs font-medium custom-box-text">${aula.titulo}</span>
+                    </div>
+                    <button onclick="removerAula('${materia.id}', ${index})" class="text-slate-500 hover:text-red-400 text-xs px-1">✕</button>
+                `;
+                containerAulas.appendChild(div);
+            });
+        }
+
+        function carregarVideo(url) {
+            const videoId = extrairIdYouTube(url);
+            const container = document.getElementById('videoContainer');
+            if (!videoId) {
+                container.innerHTML = `<span class="text-xs text-red-400">Link do YouTube inválido</span>`;
+                return;
+            }
+            container.innerHTML = `<iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}?enablejsapi=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        }
+
+        // Funções de Controle de Tempo
+        function mudarTempo(segundos) {
+            // Nota: Controle via API do iframe requer postMessage ou API do YT, mantido estruturalmente pronto.
+            const iframe = document.querySelector('#videoContainer iframe');
+            if(iframe) {
+                // Simulação de salto temporal via recarga ou comando de API se aplicável
+            }
+        }
+
+        function telaCheia() {
+            const iframe = document.querySelector('#videoContainer iframe');
+            if (iframe) {
+                if (iframe.requestFullscreen) iframe.requestFullscreen();
+            }
+        }
+
+        // Ações de Modais / Cadastros
+        function abrirModalMateria() {
+            const nome = prompt("Digite o nome da nova matéria (ex: Matemática, Física):");
+            if (nome) {
+                const id = nome.toLowerCase().replace(/\s+/g, '-');
+                appData.materias.push({ id, nome: nome.toUpperCase(), aulas: [] });
+                appData.materiaAtual = id;
+                salvarDados();
+                renderizar();
+            }
+        }
+
+        function abrirModalAddAula() {
+            const titulo = prompt("Digite o nome/título da aula (ex: Aula 01 - Frações):");
+            if (!titulo) return;
+            const url = prompt("Cole o link completo do vídeo do YouTube:");
+            if (!url) return;
+
+            const materia = appData.materias.find(m => m.id === appData.materiaAtual);
+            if (materia) {
+                materia.aulas.push({ titulo, url });
+                salvarDados();
+                renderizar();
+                carregarVideo(url);
+            }
+        }
+
+        function removerAula(materiaId, index) {
+            const materia = appData.materias.find(m => m.id === materiaId);
+            if (materia) {
+                materia.aulas.splice(index, 1);
+                salvarDados();
+                renderizar();
+            }
+        }
+
+        function abrirModalPersonalizar() {
+            const corVideo = prompt("Cor da linha que cerca o vídeo (Hex, ex: #3b82f6):", appData.config.corVideo);
+            const corBox = prompt("Cor da borda de cada box (Hex, ex: #1e293b):", appData.config.corBox);
+            const corTexto = prompt("Cor do texto dos boxes (Hex, ex: #ffffff):", appData.config.corTexto);
+
+            if (corVideo) appData.config.corVideo = corVideo;
+            if (corBox) appData.config.corBox = corBox;
+            if (corTexto) appData.config.corTexto = corTexto;
+            salvarDados();
+            renderizar();
+        }
+
+        function abrirModalFundo() {
+            const urlImg = prompt("Cole o link direto da imagem de fundo (URL):", appData.config.bgImagem);
+            if (urlImg !== null) {
+                appData.config.bgImagem = urlImg;
+                salvarDados();
+                renderizar();
+            }
+        }
+
+        function abrirModalAjuda() {
+            alert("COMO USAR O APP:\n\n1. Crie suas matérias usando o botão '+ Nova Matéria'.\n2. Dentro de cada matéria, adicione aulas colando o link do YouTube.\n3. Clique na aula para assistir diretamente no player superior.\n4. Personalize as cores e o fundo nas opções de gerenciamento.\n5. Apoie o projeto usando a chave Pix informada na tela principal!");
+        }
+
+        function copiarPix() {
+            const chave = document.getElementById('chavePix').innerText;
+            navigator.clipboard.writeText(chave);
+            alert("Chave Pix copiada com sucesso!");
+        }
+
+        // Inicializar o app na primeira execução
+        renderizar();
+    </script>
+</body>
+</html>
