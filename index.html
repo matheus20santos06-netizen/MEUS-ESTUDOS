@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App Meus Estudos</title>
-    <!-- Tailwind CSS via CDN para estilização rápida e moderna -->
+    <title>App Meus Estudos Pro | ADM Matheus</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF para exportação de relatório em PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root {
             --border-video: #3b82f6;
@@ -24,68 +26,155 @@
         .custom-video-border { border: 2px solid var(--border-video); }
         .custom-box-border { border: 1px solid var(--border-box); }
         .custom-box-text { color: var(--text-box); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="p-4 flex flex-col items-center">
+<body class="p-4 flex flex-col items-center pb-24">
 
     <!-- CABEÇALHO -->
     <header class="w-full max-w-md text-center mb-4">
         <h1 class="text-xl font-bold tracking-wide">APP MEUS ESTUDOS | ADM MATHEUS 📚</h1>
         <div id="statusVoz" class="mt-2 inline-block bg-purple-600 text-white text-xs px-3 py-1 rounded-full font-semibold">
-            🔊 MODO ESTUDO ATIVO
+            ⚡ MODO PRO ATIVO
         </div>
     </header>
 
     <div class="w-full max-w-md space-y-4">
 
-        <!-- PLAYER DE VÍDEO -->
-        <div class="w-full bg-slate-900 rounded-xl p-2 shadow-lg custom-video-border relative overflow-hidden">
-            <div id="videoContainer" class="relative w-full aspect-video bg-black rounded-lg flex items-center justify-center overflow-hidden">
-                <span class="text-xs text-slate-400">Nenhuma aula selecionada</span>
+        <!-- ABA / NAVEGAÇÃO PRINCIPAL -->
+        <div class="grid grid-cols-5 gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800 text-center text-[10px] font-bold">
+            <button onclick="mudarAba('estudos')" id="tab-estudos" class="py-2 rounded-lg bg-blue-600 text-white transition">Estudos</button>
+            <button onclick="mudarAba('questoes')" id="tab-questoes" class="py-2 rounded-lg text-slate-400 hover:text-white transition">Questões</button>
+            <button onclick="mudarAba('anotacoes')" id="tab-anotacoes" class="py-2 rounded-lg text-slate-400 hover:text-white transition">Notas</button>
+            <button onclick="mudarAba('livros')" id="tab-livros" class="py-2 rounded-lg text-slate-400 hover:text-white transition">Livros</button>
+            <button onclick="mudarAba('estatisticas')" id="tab-estatisticas" class="py-2 rounded-lg text-slate-400 hover:text-white transition">Stats</button>
+        </div>
+
+        <!-- CONTEÚDO: ESTUDOS (VÍDEOS E MATÉRIAS) -->
+        <div id="secao-estudos" class="space-y-4">
+            <!-- PLAYER DE VÍDEO -->
+            <div class="w-full bg-slate-900 rounded-xl p-2 shadow-lg custom-video-border relative overflow-hidden">
+                <div id="videoContainer" class="relative w-full aspect-video bg-black rounded-lg flex items-center justify-center overflow-hidden">
+                    <span class="text-xs text-slate-400">Nenhuma aula selecionada</span>
+                </div>
+                <div class="flex justify-between items-center mt-2 gap-2">
+                    <button onclick="mudarTempo(-10)" class="flex-1 bg-slate-800 hover:bg-slate-700 py-1.5 rounded text-xs font-bold">-10s</button>
+                    <button onclick="mudarTempo(10)" class="flex-1 bg-slate-800 hover:bg-slate-700 py-1.5 rounded text-xs font-bold">+10s</button>
+                    <button onclick="telaCheia()" class="flex-2 bg-sky-600 hover:bg-sky-500 py-1.5 px-3 rounded text-xs font-bold flex items-center justify-center gap-1">📺 TELA CHEIA</button>
+                </div>
             </div>
-            <!-- Controles de Vídeo -->
-            <div class="flex justify-between items-center mt-2 gap-2">
-                <button onclick="mudarTempo(-10)" class="flex-1 bg-slate-800 hover:bg-slate-700 py-1.5 rounded text-xs font-bold">-10s</button>
-                <button onclick="mudarTempo(10)" class="flex-1 bg-slate-800 hover:bg-slate-700 py-1.5 rounded text-xs font-bold">+10s</button>
-                <button onclick="telaCheia()" class="flex-2 bg-sky-600 hover:bg-sky-500 py-1.5 px-3 rounded text-xs font-bold flex items-center justify-center gap-1">📺 TELA CHEIA</button>
+
+            <!-- SELEÇÃO DE MATÉRIAS -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-slate-300">Matérias:</span>
+                    <button onclick="abrirModalMateria()" class="text-[11px] text-blue-400 hover:underline font-semibold">+ Nova Matéria</button>
+                </div>
+                <div id="materiasContainer" class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                    <!-- Gerado via JS -->
+                </div>
+            </div>
+
+            <!-- LISTA DE AULAS -->
+            <div class="bg-slate-900/80 p-3 rounded-xl shadow border border-slate-800">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 id="tituloMateriaAtual" class="font-bold text-sm text-sky-400">Aulas</h2>
+                    <button onclick="abrirModalAddAula()" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Adicionar Aula</button>
+                </div>
+                <div id="aulasContainer" class="space-y-2 max-h-52 overflow-y-auto">
+                    <!-- Gerado via JS -->
+                </div>
             </div>
         </div>
 
-        <!-- SELEÇÃO DE MATÉRIAS (BOXES) -->
-        <div class="text-center text-sm font-medium text-slate-300">
-            Selecione uma matéria ou adicione abaixo:
-        </div>
-        <div id="materiasContainer" class="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-            <!-- Gerado via JS -->
-        </div>
-
-        <!-- LISTA DE AULAS DA MATÉRIA ATUAL -->
-        <div class="bg-slate-900/80 p-3 rounded-xl shadow border border-slate-800">
-            <div class="flex justify-between items-center mb-3">
-                <h2 id="tituloMateriaAtual" class="font-bold text-sm text-sky-400">Aulas</h2>
-                <button onclick="abrirModalAddAula()" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Adicionar Aula</button>
-            </div>
-            <div id="aulasContainer" class="space-y-2 max-h-60 overflow-y-auto">
-                <!-- Gerado via JS -->
+        <!-- CONTEÚDO: QUESTÕES E SIMULADOS -->
+        <div id="secao-questoes" class="space-y-4 hidden">
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-bold text-sm text-amber-400">🧠 Banco de Questões</h2>
+                    <div class="flex gap-2">
+                        <button onclick="iniciarSimulado()" class="bg-blue-600 hover:bg-blue-500 text-xs px-2.5 py-1 rounded font-bold">Resolver (Quiz)</button>
+                        <button onclick="abrirModalAddQuestao()" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Nova</button>
+                    </div>
+                </div>
+                <div id="questoesContainer" class="space-y-2 max-h-72 overflow-y-auto">
+                    <!-- Gerado via JS -->
+                </div>
             </div>
         </div>
 
-        <!-- PAINEL DE CONTROLE / GERENCIAMENTO -->
-        <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-3">
-            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">🛠️ Gerenciar & Personalizar</h3>
-            
-            <div class="grid grid-cols-2 gap-2">
-                <button onclick="abrirModalMateria()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">+ Nova Matéria</button>
-                <button onclick="abrirModalPersonalizar()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">🎨 Personalizar Cores</button>
-                <button onclick="abrirModalFundo()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">🖼️ Trocar Fundo</button>
-                <button onclick="abrirModalAjuda()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">❓ Ajuda / Como Usar</button>
+        <!-- CONTEÚDO: BLOCO DE NOTAS -->
+        <div id="secao-anotacoes" class="space-y-4 hidden">
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-bold text-sm text-purple-400">📝 Bloco de Anotações</h2>
+                    <span class="text-[10px] text-slate-500">Salvo automaticamente</span>
+                </div>
+                <textarea id="blocoNotas" oninput="salvarNotas()" placeholder="Escreva suas anotações de estudo aqui..." class="w-full h-64 bg-slate-950 p-3 rounded-lg text-xs text-slate-200 border border-slate-800 focus:outline-none focus:border-purple-500 resize-none"></textarea>
+            </div>
+        </div>
+
+        <!-- CONTEÚDO: LIVROS EM PDF -->
+        <div id="secao-livros" class="space-y-4 hidden">
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-bold text-sm text-emerald-400">📖 Livros e Apostilas PDF</h2>
+                    <button onclick="abrirModalAddLivro()" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Adicionar Livro</button>
+                </div>
+                <div id="livrosContainer" class="space-y-2 max-h-64 overflow-y-auto">
+                    <!-- Gerado via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTEÚDO: ESTATÍSTICAS E CONFIGURAÇÕES -->
+        <div id="secao-estatisticas" class="space-y-4 hidden">
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-3">
+                <h2 class="font-bold text-sm text-sky-400">📊 Métricas & Desempenho</h2>
+                
+                <div class="grid grid-cols-2 gap-2 text-center">
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-slate-400 block">Tempo de Uso Hoje</span>
+                        <span id="statTempoUso" class="text-sm font-bold text-sky-300">0 min</span>
+                    </div>
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-slate-400 block">Questões Feitas</span>
+                        <span id="statQtdQuest" class="text-sm font-bold text-amber-300">0</span>
+                    </div>
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-slate-400 block">Taxa de Acerto</span>
+                        <span id="statTaxaAcerto" class="text-sm font-bold text-emerald-300">0%</span>
+                    </div>
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-slate-400 block">Margem de Erro</span>
+                        <span id="statTaxaErro" class="text-sm font-bold text-red-400">0%</span>
+                    </div>
+                </div>
+
+                <!-- Configuração de Dias de Revisão -->
+                <div class="pt-2 border-t border-slate-800 space-y-1">
+                    <label class="text-xs font-bold text-slate-300">Dias de Revisão Padrão:</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="inputDiasRevisao" onchange="atualizarDiasRevisao(this.value)" class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs w-20 text-center font-bold text-white" min="1" max="30">
+                        <span class="text-[11px] text-slate-400 self-center">dias após o estudo</span>
+                    </div>
+                </div>
+
+                <!-- Personalização e Utilitários -->
+                <div class="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2">
+                    <button onclick="abrirModalPersonalizar()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">🎨 Personalizar Cores</button>
+                    <button onclick="abrirModalFundo()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">🖼️ Trocar Fundo</button>
+                    <button onclick="abrirModalAjuda()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">❓ Como Usar</button>
+                    <button onclick="confirmarResetTotal()" class="bg-red-900/40 hover:bg-red-900/60 text-red-300 border border-red-800 text-xs py-2 px-3 rounded font-semibold text-left">⚠️ Reset Total</button>
+                </div>
             </div>
         </div>
 
         <!-- APOIAR PROJETO (PIX) -->
         <div class="bg-gradient-to-r from-amber-500/10 to-amber-600/20 border border-amber-500/30 p-3 rounded-xl text-center space-y-1">
             <p class="text-xs font-bold text-amber-400">⭐ Apoie este Projeto!</p>
-            <p class="text-[11px] text-slate-300">Ajude o criador mantendo a plataforma ativa com qualquer valor via Pix:</p>
+            <p class="text-[11px] text-slate-300">Contribua para manter a plataforma ativa com qualquer valor:</p>
             <div class="bg-slate-950 p-2 rounded border border-amber-500/20 flex items-center justify-between gap-2 mt-1">
                 <span id="chavePix" class="text-[10px] text-amber-300 font-mono truncate">ae65caa9-f060-4a6e-910e-d48a1bd9ec36</span>
                 <button onclick="copiarPix()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] px-2 py-1 rounded font-bold">Copiar</button>
@@ -94,17 +183,35 @@
 
     </div>
 
-    <!-- MODAIS DE SUPORTE (Criados dinamicamente via JS) -->
-    <div id="modalContainer"></div>
+    <!-- MODAL DE RESOLUÇÃO DE QUESTÕES / SIMULADO -->
+    <div id="modalSimulado" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-xl p-4 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 id="simuladoTitulo" class="font-bold text-sm text-amber-400">Modo Simulado / Resolução</h3>
+                <button onclick="fecharSimulado()" class="text-slate-400 hover:text-white text-xs font-bold px-2 py-1 bg-slate-800 rounded">Retornar ✕</button>
+            </div>
+            <div id="simuladoConteudo" class="space-y-3">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
+    </div>
 
-    <!-- SCRIPT DE FUNCIONALIDADES -->
+    <!-- SCRIPT DO APLICATIVO -->
     <script>
-        // Estado inicial do Aplicativo
-        let appData = JSON.parse(localStorage.getItem('meusEstudosData')) || {
-            materias: [
-                { id: 'saude', nome: 'SAÚDE', aulas: [ { titulo: 'Saúde - Aula 1', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' } ] }
-            ],
-            materiaAtual: 'saude',
+        let appData = JSON.parse(localStorage.getItem('meusEstudosProData')) || {
+            materias: [],
+            materiaAtual: null,
+            questoes: [],
+            notas: "",
+            livros: [],
+            estatisticas: {
+                tempoSegundos: 0,
+                questoesRespondidas: 0,
+                acertos: 0,
+                erros: 0,
+                diasRevisao: 7,
+                ultimoAcesso: new Date().toDateString()
+            },
             config: {
                 corVideo: '#3b82f6',
                 corBox: '#1e293b',
@@ -114,10 +221,14 @@
             }
         };
 
-        let player = null;
+        setInterval(() => {
+            appData.estatisticas.tempoSegundos++;
+            salvarDados();
+            atualizarEstatisticasUI();
+        }, 1000);
 
         function salvarDados() {
-            localStorage.setItem('meusEstudosData', JSON.stringify(appData));
+            localStorage.setItem('meusEstudosProData', JSON.stringify(appData));
         }
 
         function aplicarConfiguracoes() {
@@ -130,37 +241,62 @@
                 document.body.style.backgroundImage = 'none';
                 document.body.style.backgroundColor = appData.config.bgCor;
             }
+            document.getElementById('blocoNotas').value = appData.notas || '';
+            document.getElementById('inputDiasRevisao').value = appData.estatisticas.diasRevisao || 7;
         }
 
-        // Extrair ID do YouTube
+        function mudarAba(aba) {
+            ['estudos', 'questoes', 'anotacoes', 'livros', 'estatisticas'].forEach(id => {
+                document.getElementById(`secao-${id}`).classList.add('hidden');
+                document.getElementById(`tab-${id}`).className = "py-2 rounded-lg text-slate-400 hover:text-white transition";
+            });
+            document.getElementById(`secao-${aba}`).classList.remove('hidden');
+            document.getElementById(`tab-${aba}`).className = "py-2 rounded-lg bg-blue-600 text-white transition font-bold";
+        }
+
         function extrairIdYouTube(url) {
             const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
             const match = url.match(regExp);
             return (match && match[2].length === 11) ? match[2] : null;
         }
 
-        // Renderizar Interface
         function renderizar() {
             aplicarConfiguracoes();
-            
-            // Renderizar Abas de Matérias
+            renderizarMaterias();
+            renderizarQuestoes();
+            renderizarLivros();
+            atualizarEstatisticasUI();
+        }
+
+        function renderizarMaterias() {
             const containerMat = document.getElementById('materiasContainer');
             containerMat.innerHTML = '';
+
+            if (appData.materias.length === 0) {
+                containerMat.innerHTML = `<span class="text-xs text-slate-500 py-1">Nenhuma matéria criada. Clique em '+ Nova Matéria'.</span>`;
+                document.getElementById('tituloMateriaAtual').innerText = "Aulas (Nenhuma matéria)";
+                document.getElementById('aulasContainer').innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Crie uma matéria para adicionar aulas.</p>`;
+                return;
+            }
+
+            if (!appData.materiaAtual || !appData.materias.find(m => m.id === appData.materiaAtual)) {
+                appData.materiaAtual = appData.materias[0].id;
+            }
+
             appData.materias.forEach(mat => {
                 const btn = document.createElement('button');
                 const ativo = mat.id === appData.materiaAtual;
-                btn.className = `px-4 py-2 rounded-lg text-xs font-bold uppercase transition whitespace-nowrap ${ativo ? 'bg-blue-600 text-white shadow' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`;
+                btn.className = `px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition whitespace-nowrap ${ativo ? 'bg-blue-600 text-white shadow' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`;
                 btn.innerText = mat.nome;
                 btn.onclick = () => {
                     appData.materiaAtual = mat.id;
                     salvarDados();
-                    renderizar();
+                    renderizarMaterias();
                 };
                 containerMat.appendChild(btn);
             });
 
-            // Renderizar Aulas da Matéria Selecionada
-            const materia = appData.materias.find(m => m.id === appData.materiaAtual) || appData.materias[0];
+            const materia = appData.materias.find(m => m.id === appData.materiaAtual);
             if (!materia) return;
 
             document.getElementById('tituloMateriaAtual').innerText = `Aulas - ${materia.nome}`;
@@ -176,11 +312,11 @@
                 const div = document.createElement('div');
                 div.className = `flex items-center justify-between p-2.5 rounded-lg custom-box-border bg-slate-800/50 hover:bg-slate-800 cursor-pointer transition`;
                 div.innerHTML = `
-                    <div class="flex items-center gap-3" onclick="carregarVideo('${aula.url}')">
-                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">${index + 1}</span>
-                        <span class="text-xs font-medium custom-box-text">${aula.titulo}</span>
+                    <div class="flex items-center gap-3 flex-1 overflow-hidden" onclick="carregarVideo('${aula.url}')">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">${index + 1}</span>
+                        <span class="text-xs font-medium custom-box-text truncate">${aula.titulo}</span>
                     </div>
-                    <button onclick="removerAula('${materia.id}', ${index})" class="text-slate-500 hover:text-red-400 text-xs px-1">✕</button>
+                    <button onclick="removerAula('${materia.id}', ${index})" class="text-slate-500 hover:text-red-400 text-xs px-2 py-1">✕</button>
                 `;
                 containerAulas.appendChild(div);
             });
@@ -193,28 +329,20 @@
                 container.innerHTML = `<span class="text-xs text-red-400">Link do YouTube inválido</span>`;
                 return;
             }
-            container.innerHTML = `<iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}?enablejsapi=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+            container.innerHTML = `<iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
         }
 
-        // Funções de Controle de Tempo
-        function mudarTempo(segundos) {
-            // Nota: Controle via API do iframe requer postMessage ou API do YT, mantido estruturalmente pronto.
-            const iframe = document.querySelector('#videoContainer iframe');
-            if(iframe) {
-                // Simulação de salto temporal via recarga ou comando de API se aplicável
-            }
-        }
+        function mudarTempo(segundos) {}
 
         function telaCheia() {
             const iframe = document.querySelector('#videoContainer iframe');
-            if (iframe) {
-                if (iframe.requestFullscreen) iframe.requestFullscreen();
+            if (iframe && iframe.requestFullscreen) {
+                iframe.requestFullscreen();
             }
         }
 
-        // Ações de Modais / Cadastros
         function abrirModalMateria() {
-            const nome = prompt("Digite o nome da nova matéria (ex: Matemática, Física):");
+            const nome = prompt("Digite o nome da nova matéria (ex: Português, Matemática, Física):");
             if (nome) {
                 const id = nome.toLowerCase().replace(/\s+/g, '-');
                 appData.materias.push({ id, nome: nome.toUpperCase(), aulas: [] });
@@ -225,7 +353,11 @@
         }
 
         function abrirModalAddAula() {
-            const titulo = prompt("Digite o nome/título da aula (ex: Aula 01 - Frações):");
+            if (appData.materias.length === 0) {
+                alert("Crie uma matéria primeiro!");
+                return;
+            }
+            const titulo = prompt("Digite o título da aula (ex: Aula 1 - Equações):");
             if (!titulo) return;
             const url = prompt("Cole o link completo do vídeo do YouTube:");
             if (!url) return;
@@ -248,9 +380,261 @@
             }
         }
 
+        function abrirModalAddQuestao() {
+            const pergunta = prompt("Cole ou digite a pergunta da questão:");
+            if (!pergunta) return;
+
+            const temAlternativas = confirm("Esta questão possui alternativas de múltipla escolha?\n(OK para Sim | Cancelar para Dissertativa/Aberta)");
+            
+            let alternativas = [];
+            let respostaCorreta = "";
+
+            if (temAlternativas) {
+                for (let i = 1; i <= 4; i++) {
+                    const alt = prompt(`Digite a alternativa ${i} (ou deixe vazio para encerrar):`);
+                    if (!alt) break;
+                    alternativas.push(alt);
+                }
+                if (alternativas.length > 0) {
+                    respostaCorreta = prompt(`Qual o número da alternativa correta? (1 a ${alternativas.length}):`);
+                }
+            } else {
+                respostaCorreta = prompt("Digite a resposta correta esperada:");
+            }
+
+            appData.questoes.push({
+                pergunta,
+                temAlternativas,
+                alternativas,
+                respostaCorreta
+            });
+            salvarDados();
+            renderizar();
+        }
+
+        function renderizarQuestoes() {
+            const container = document.getElementById('questoesContainer');
+            container.innerHTML = '';
+
+            if (appData.questoes.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Nenhuma questão cadastrada. Clique em '+ Nova'.</p>`;
+                return;
+            }
+
+            appData.questoes.forEach((q, idx) => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1";
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-bold text-amber-400">Questão ${idx + 1}</span>
+                        <button onclick="removerQuestao(${idx})" class="text-slate-500 hover:text-red-400 text-xs">✕</button>
+                    </div>
+                    <p class="text-xs text-slate-200">${q.pergunta}</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function removerQuestao(index) {
+            appData.questoes.splice(index, 1);
+            salvarDados();
+            renderizar();
+        }
+
+        function iniciarSimulado() {
+            if (appData.questoes.length === 0) {
+                alert("Não há questões cadastradas para resolver!");
+                return;
+            }
+
+            document.getElementById('modalSimulado').classList.remove('hidden');
+            let qIndex = 0;
+            let acertosSessao = 0;
+            let errosSessao = 0;
+            let historicoRespostas = [];
+
+            function mostrarProximaQuestao() {
+                if (qIndex >= appData.questoes.length) {
+                    const pctAcerto = Math.round((acertosSessao / appData.questoes.length) * 100);
+                    
+                    appData.estatisticas.questoesRespondidas += appData.questoes.length;
+                    appData.estatisticas.acertos += acertosSessao;
+                    appData.estatisticas.erros += errosSessao;
+                    salvarDados();
+
+                    let htmlRelatorio = `
+                        <div class="text-center space-y-2">
+                            <h4 class="text-sm font-bold text-emerald-400">🎉 Simulado Concluído!</h4>
+                            <p class="text-xs text-slate-300">Acertos: ${acertosSessao} | Erros: ${errosSessao} (${pctAcerto}% de Aproveitamento)</p>
+                        </div>
+                        <div class="space-y-2 max-h-48 overflow-y-auto">
+                    `;
+                    historicoRespostas.forEach((h, i) => {
+                        htmlRelatorio += `
+                            <div class="p-2 rounded bg-slate-950 text-[11px] border ${h.acertou ? 'border-emerald-800/50' : 'border-red-800/50'}">
+                                <p class="font-bold text-slate-200">Q${i+1}: ${h.pergunta}</p>
+                                <p class="${h.acertou ? 'text-emerald-400' : 'text-red-400'}">Sua resposta: ${h.respostaUsuario} | Correta: ${h.respostaCorreta}</p>
+                            </div>
+                        `;
+                    });
+                    htmlRelatorio += `</div>
+                        <div class="flex gap-2 pt-2">
+                            <button onclick='exportarRelatorioPDF(${JSON.stringify(historicoRespostas)}, ${acertosSessao}, ${errosSessao}, ${pctAcerto})' class="flex-1 bg-purple-600 hover:bg-purple-500 py-2 rounded text-xs font-bold text-white">📥 Salvar Relatório em PDF</button>
+                            <button onclick="fecharSimulado()" class="flex-1 bg-slate-800 hover:bg-slate-700 py-2 rounded text-xs font-bold">Fechar</button>
+                        </div>
+                    `;
+                    document.getElementById('simuladoConteudo').innerHTML = htmlRelatorio;
+                    return;
+                }
+
+                const q = appData.questoes[qIndex];
+                let conteudoHTML = `
+                    <div class="text-[11px] text-slate-400">Questão ${qIndex + 1} de ${appData.questoes.length}</div>
+                    <p class="text-xs font-bold text-slate-200">${q.pergunta}</p>
+                `;
+
+                if (q.temAlternativas && q.alternativas.length > 0) {
+                    conteudoHTML += `<div class="space-y-1.5 pt-2">`;
+                    q.alternativas.forEach((alt, altIdx) => {
+                        conteudoHTML += `<button onclick="responderQuestao(${altIdx + 1})" class="w-full text-left p-2 rounded bg-slate-950 hover:bg-slate-800 text-xs text-slate-300 border border-slate-800">${altIdx + 1}) ${alt}</button>`;
+                    });
+                    conteudoHTML += `</div>`;
+                } else {
+                    conteudoHTML += `
+                        <div class="space-y-2 pt-2">
+                            <input type="text" id="respostaAberta" placeholder="Digite sua resposta..." class="w-full bg-slate-950 border border-slate-800 p-2 rounded text-xs text-white">
+                            <button onclick="responderQuestao(document.getElementById('respostaAberta').value)" class="w-full bg-blue-600 hover:bg-blue-500 py-2 rounded text-xs font-bold">Enviar Resposta</button>
+                        </div>
+                    `;
+                }
+
+                document.getElementById('simuladoConteudo').innerHTML = conteudoHTML;
+            }
+
+            window.responderQuestao = function(respUsuario) {
+                const q = appData.questoes[qIndex];
+                let acertou = false;
+
+                if (q.temAlternativas) {
+                    acertou = String(respUsuario).trim() === String(q.respostaCorreta).trim();
+                } else {
+                    acertou = String(respUsuario).trim().toLowerCase() === String(q.respostaCorreta).trim().toLowerCase();
+                }
+
+                if (acertou) acertosSessao++; else errosSessao++;
+
+                historicoRespostas.push({
+                    pergunta: q.pergunta,
+                    respostaUsuario: respUsuario,
+                    respostaCorreta: q.respostaCorreta,
+                    acertou
+                });
+
+                qIndex++;
+                mostrarProximaQuestao();
+            };
+
+            mostrarProximaQuestao();
+        }
+
+        function fecharSimulado() {
+            document.getElementById('modalSimulado').classList.add('hidden');
+            renderizar();
+        }
+
+        function exportarRelatorioPDF(historico, acertos, erros, pct) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text("Relatorio de Desempenho - App Meus Estudos", 14, 20);
+            
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Aproveitamento: ${pct}% | Acertos: ${acertos} | Erros: ${erros}`, 14, 28);
+            
+            let y = 40;
+            historico.forEach((h, i) => {
+                if (y > 270) { doc.addPage(); y = 20; }
+                doc.setFont("helvetica", "bold");
+                doc.text(`Q${i+1}: ${h.pergunta}`, 14, y);
+                y += 6;
+                doc.setFont("helvetica", "normal");
+                doc.text(`Sua resposta: ${h.respostaUsuario} | Correta: ${h.respostaCorreta} (${h.acertou ? 'ACERTOU' : 'ERROU'})`, 14, y);
+                y += 10;
+            });
+            
+            doc.save("relatorio-estudos.pdf");
+            alert("Relatório PDF baixado com sucesso!");
+        }
+
+        function salvarNotas() {
+            appData.notas = document.getElementById('blocoNotas').value;
+            salvarDados();
+        }
+
+        function abrirModalAddLivro() {
+            const titulo = prompt("Digite o título do livro ou apostila:");
+            if (!titulo) return;
+            const url = prompt("Cole o link direto do arquivo PDF (URL):");
+            if (!url) return;
+
+            appData.livros.push({ titulo, url });
+            salvarDados();
+            renderizarLivros();
+        }
+
+        function renderizarLivros() {
+            const container = document.getElementById('livrosContainer');
+            container.innerHTML = '';
+
+            if (appData.livros.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Nenhum livro cadastrado. Clique em '+ Adicionar Livro'.</p>`;
+                return;
+            }
+
+            appData.livros.forEach((livro, idx) => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-2.5 rounded-lg bg-slate-950 border border-slate-800";
+                div.innerHTML = `
+                    <div class="flex items-center gap-2 overflow-hidden flex-1 cursor-pointer" onclick="window.open('${livro.url}', '_blank')">
+                        <span class="text-xs font-bold text-emerald-400">📖</span>
+                        <span class="text-xs font-medium text-slate-200 truncate">${livro.titulo}</span>
+                    </div>
+                    <button onclick="removerLivro(${idx})" class="text-slate-500 hover:text-red-400 text-xs px-2 py-1">✕</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function removerLivro(index) {
+            appData.livros.splice(index, 1);
+            salvarDados();
+            renderizarLivros();
+        }
+
+        function atualizarEstatisticasUI() {
+            const mins = Math.floor(appData.estatisticas.tempoSegundos / 60);
+            document.getElementById('statTempoUso').innerText = `${mins} min`;
+            document.getElementById('statQtdQuest').innerText = appData.estatisticas.questoesRespondidas;
+
+            const totalQ = appData.estatisticas.acertos + appData.estatisticas.erros;
+            const taxaAcerto = totalQ > 0 ? Math.round((appData.estatisticas.acertos / totalQ) * 100) : 0;
+            const taxaErro = totalQ > 0 ? 100 - taxaAcerto : 0;
+
+            document.getElementById('statTaxaAcerto').innerText = `${taxaAcerto}%`;
+            document.getElementById('statTaxaErro').innerText = `${taxaErro}%`;
+        }
+
+        function atualizarDiasRevisao(valor) {
+            appData.estatisticas.diasRevisao = parseInt(valor) || 7;
+            salvarDados();
+        }
+
         function abrirModalPersonalizar() {
             const corVideo = prompt("Cor da linha que cerca o vídeo (Hex, ex: #3b82f6):", appData.config.corVideo);
-            const corBox = prompt("Cor da borda de cada box (Hex, ex: #1e293b):", appData.config.corBox);
+            const corBox = prompt("Cor da borda dos boxes (Hex, ex: #1e293b):", appData.config.corBox);
             const corTexto = prompt("Cor do texto dos boxes (Hex, ex: #ffffff):", appData.config.corTexto);
 
             if (corVideo) appData.config.corVideo = corVideo;
@@ -261,7 +645,7 @@
         }
 
         function abrirModalFundo() {
-            const urlImg = prompt("Cole o link direto da imagem de fundo (URL):", appData.config.bgImagem);
+            const urlImg = prompt("Cole o link direto da imagem de fundo (verificando proporção da tela):", appData.config.bgImagem);
             if (urlImg !== null) {
                 appData.config.bgImagem = urlImg;
                 salvarDados();
@@ -270,7 +654,7 @@
         }
 
         function abrirModalAjuda() {
-            alert("COMO USAR O APP:\n\n1. Crie suas matérias usando o botão '+ Nova Matéria'.\n2. Dentro de cada matéria, adicione aulas colando o link do YouTube.\n3. Clique na aula para assistir diretamente no player superior.\n4. Personalize as cores e o fundo nas opções de gerenciamento.\n5. Apoie o projeto usando a chave Pix informada na tela principal!");
+            alert("❓ COMO USAR O APP MEUS ESTUDOS:\n\n1. ESTUDOS: Crie matérias e adicione links de vídeos do YouTube em formato de aulas.\n2. QUESTÕES: Cadastre perguntas com ou sem alternativas e resolva simulados com cálculo de desempenho e relatório PDF.\n3. NOTAS: Bloco de anotações com salvamento automático.\n4. LIVROS: Adicione links de PDFs de apostilas para leitura rápida.\n5. ESTATÍSTICAS: Acompanhe o tempo de estudo diário, taxa de acerto e configure seus dias de revisão.");
         }
 
         function copiarPix() {
@@ -279,7 +663,13 @@
             alert("Chave Pix copiada com sucesso!");
         }
 
-        // Inicializar o app na primeira execução
+        function confirmarResetTotal() {
+            if (confirm("⚠️ ATENÇÃO: Deseja realmente apagar todos os dados, notas, questões e reiniciar o aplicativo?")) {
+                localStorage.removeItem('meusEstudosProData');
+                location.reload();
+            }
+        }
+
         renderizar();
     </script>
 </body>
