@@ -45,7 +45,7 @@
         <h1 class="text-xl font-bold tracking-wide">APP MEUS ESTUDOS 📚</h1>
         <div id="saudacaoUsuario" class="mt-1 text-xs text-sky-400 font-semibold">Olá! Carregando...</div>
         <div id="statusVoz" class="mt-2 inline-block bg-purple-600 text-white text-xs px-3 py-1 rounded-full font-semibold">
-            ⚡ MODO PRO ATIVO
+            ⚡ MODO PRO ATIVO (GROQ AI)
         </div>
     </header>
 
@@ -136,7 +136,7 @@
                 <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
                     <h2 class="font-bold text-sm text-amber-400">🧠 Banco de Questões</h2>
                     <div class="flex gap-2 flex-wrap">
-                        <button onclick="gerarQuestoesComIA()" class="bg-purple-600 hover:bg-purple-500 text-xs px-2.5 py-1 rounded font-bold text-white flex items-center gap-1">✨ Gerar via IA</button>
+                        <button onclick="gerarQuestoesComIA()" class="bg-purple-600 hover:bg-purple-500 text-xs px-2.5 py-1 rounded font-bold text-white flex items-center gap-1">✨ Gerar via IA (Groq)</button>
                         <button onclick="iniciarSimulado()" class="bg-blue-600 hover:bg-blue-500 text-xs px-2.5 py-1 rounded font-bold">Resolver (Quiz)</button>
                         <button onclick="abrirModalAddQuestao()" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Nova</button>
                     </div>
@@ -226,9 +226,9 @@
                             <span class="text-[10px] text-slate-400">dias</span>
                         </div>
                     </div>
-                    <button onclick="configurarGeminiKey()" class="w-full bg-purple-900/40 hover:bg-purple-900/60 border border-purple-700 text-purple-300 text-xs py-1.5 px-3 rounded font-semibold text-left flex justify-between items-center">
-                        <span>🔑 Configurar Chave Gemini (IA)</span>
-                        <span id="statusKeyGemini" class="text-[10px] font-mono">Não salva</span>
+                    <button onclick="configurarGroqKey()" class="w-full bg-purple-900/40 hover:bg-purple-900/60 border border-purple-700 text-purple-300 text-xs py-1.5 px-3 rounded font-semibold text-left flex justify-between items-center">
+                        <span>🔑 Configurar Chave Groq (IA)</span>
+                        <span id="statusKeyGroq" class="text-[10px] font-mono">Não salva</span>
                     </button>
                 </div>
 
@@ -346,7 +346,7 @@
                 corTexto: '#ffffff',
                 bgImagem: '',
                 bgCor: '#0f172a',
-                geminiApiKey: ''
+                groqApiKey: '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'
             }
         };
 
@@ -407,10 +407,10 @@
             document.getElementById('blocoNotas').value = appData.notas || '';
             document.getElementById('inputDiasRevisao').value = appData.estatisticas.diasRevisao || 7;
             
-            const statusKeyEl = document.getElementById('statusKeyGemini');
+            const statusKeyEl = document.getElementById('statusKeyGroq');
             if (statusKeyEl) {
-                statusKeyEl.innerText = appData.config.geminiApiKey ? "Configurada ✓" : "Não salva";
-                statusKeyEl.className = appData.config.geminiApiKey ? "text-[10px] font-mono text-emerald-400 font-bold" : "text-[10px] font-mono text-slate-400";
+                statusKeyEl.innerText = appData.config.groqApiKey ? "Configurada ✓" : "Não salva";
+                statusKeyEl.className = appData.config.groqApiKey ? "text-[10px] font-mono text-emerald-400 font-bold" : "text-[10px] font-mono text-slate-400";
             }
 
             const switchInf = document.getElementById('switchModoInfantil');
@@ -467,7 +467,7 @@
             atualizarEstatisticasUI();
         }
 
-        // --- BUSCA YOUTUBE (ABRIR EM NOVA ABA PARA COPIAR O LINK) ---
+        // --- BUSCA YOUTUBE ---
         async function buscarVideosYouTube() {
             const query = document.getElementById('inputBuscaYouTube').value.trim();
             const containerRes = document.getElementById('resultadosYouTube');
@@ -732,24 +732,24 @@
             renderizar();
         }
 
-        // --- GEMINI API MODELO ATUALIZADO ---
-        function configurarGeminiKey() {
+        // --- INTEGRAÇÃO COM GROQ API ---
+        function configurarGroqKey() {
             if (modoObservadorParam) return;
-            const key = prompt("Digite ou cole sua API Key gratuita do Google Gemini (obtenha em aistudio.google.com):", appData.config.geminiApiKey || "");
+            const key = prompt("Digite ou cole sua API Key da Groq (obtenha em console.groq.com):", appData.config.groqApiKey || "");
             if (key !== null) {
-                appData.config.geminiApiKey = key.trim();
+                appData.config.groqApiKey = key.trim();
                 salvarDados();
                 aplicarConfiguracoes();
-                alert("Chave API do Gemini atualizada com sucesso!");
+                alert("Chave API do Groq atualizada com sucesso!");
             }
         }
 
         async function gerarQuestoesComIA() {
             if (modoObservadorParam) return;
 
-            if (!appData.config.geminiApiKey) {
-                configurarGeminiKey();
-                if (!appData.config.geminiApiKey) return;
+            if (!appData.config.groqApiKey) {
+                configurarGroqKey();
+                if (!appData.config.groqApiKey) return;
             }
 
             let textoFonte = appData.notas || "";
@@ -767,64 +767,62 @@
 
             const qtd = prompt("Quantas questões deseja gerar?", "3") || "3";
 
-            const promptSystem = `
-            Você é um gerador de questões acadêmicas. Com base EXCLUSIVAMENTE no texto fornecido a seguir, crie ${qtd} questões de múltipla escolha.
-            Sua resposta deve conter APENAS o array JSON sem marcadores de código markdown ou texto extra.
+            const promptSystem = `Gere ${qtd} questões de múltipla escolha com base EXCLUSIVAMENTE no texto fornecido.
+Retorne APENAS um JSON válido contendo a chave "questoes", onde cada elemento é um objeto no formato exato:
+{
+  "questoes": [
+    {
+      "pergunta": "Texto da pergunta aqui",
+      "temAlternativas": true,
+      "alternativas": ["Opção 1", "Opção 2", "Opção 3", "Opção 4"],
+      "respostaCorreta": "1"
+    }
+  ]
+}
+Nota: "respostaCorreta" deve ser a posição numérica em texto ("1", "2", "3" ou "4") da opção correta. Não utilize blocos de código Markdown adicionais.
 
-            FORMATO OBRIGATÓRIO DE RESPOSTA:
-            [
-              {
-                "pergunta": "Texto da pergunta aqui",
-                "temAlternativas": true,
-                "alternativas": ["Opção 1", "Opção 2", "Opção 3", "Opção 4"],
-                "respostaCorreta": "1"
-              }
-            ]
-            Nota: "respostaCorreta" deve ser a posição numérica em texto ("1", "2", "3" ou "4") correspondente à opção correta.
+TEXTO BASE:
+${textoFonte}`;
 
-            TEXTO BASE:
-            ${textoFonte}
-            `;
-
-            alert("🤖 A IA está lendo o conteúdo e criando as questões. Aguarde alguns segundos...");
+            alert("🤖 A IA do Groq está gerando suas questões instantaneamente. Aguarde um instante...");
 
             try {
-                // Modelo atualizado para gemini-2.5-flash
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2-flash:generateContent?key=${appData.config.geminiApiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${appData.config.groqApiKey}`,
+                        "Content-Type": "application/json"
+                    },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: promptSystem }] }],
-                        generationConfig: {
-                            responseMimeType: "application/json"
-                        }
+                        model: "llama-3.3-70b-versatile",
+                        messages: [
+                            { role: "system", content: "Você é um assistente educacional que gera simulados em formato JSON." },
+                            { role: "user", content: promptSystem }
+                        ],
+                        response_format: { type: "json_object" },
+                        temperature: 0.7
                     })
                 });
 
+                if (!response.ok) throw new Error("Erro de comunicação com a API do Groq.");
+
                 const data = await response.json();
+                const conteudo = JSON.parse(data.choices[0].message.content);
 
-                if (!response.ok || data.error) {
-                    alert("Erro na API: " + (data.error?.message || "Erro desconhecido ao comunicar com o Gemini."));
-                    return;
-                }
-
-                let rawText = data.candidates[0].content.parts[0].text;
-                rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-
-                const novasQuestoes = JSON.parse(rawText);
+                let novasQuestoes = conteudo.questoes || conteudo;
 
                 if (Array.isArray(novasQuestoes)) {
                     appData.questoes.push(...novasQuestoes);
                     salvarDados();
                     renderizar();
-                    alert(`🎉 ${novasQuestoes.length} questão(ões) gerada(s) e adicionada(s) com sucesso ao seu Banco de Questões!`);
+                    alert(`🎉 ${novasQuestoes.length} questão(ões) gerada(s) via Groq e adicionada(s) com sucesso ao seu Banco de Questões!`);
                 } else {
-                    alert("Erro ao formatar as questões. Tente novamente.");
+                    alert("Erro ao formatar o modelo de questões retornado.");
                 }
 
             } catch (err) {
                 console.error(err);
-                alert("Falha ao comunicar com a IA Gemini: " + err.message);
+                alert("Falha ao comunicar com a IA do Groq: " + err.message);
             }
         }
 
@@ -1176,7 +1174,7 @@
         }
 
         function abrirModalAjuda() {
-            alert("❓ COMO USAR O APP MEUS ESTUDOS:\n\n1. BUSCAR AULAS: Pesquise aulas no YouTube, clique no resultado para abrir o vídeo na página do YouTube, copie o link e adicione na sua matéria.\n2. IA GEMINI: Na aba Questões, clique em '✨ Gerar via IA' para criar quizzes automáticos com base nas suas notas.\n3. PAINEL DOS PAIS: Ative o Modo Infantil nas estatísticas para obter o link de acompanhamento.");
+            alert("❓ COMO USAR O APP MEUS ESTUDOS:\n\n1. BUSCAR AULAS: Pesquise aulas no YouTube, clique no resultado para abrir o vídeo na página do YouTube, copie o link e adicione na sua matéria.\n2. IA GROQ: Na aba Questões, clique em '✨ Gerar via IA (Groq)' para criar quizzes automáticos e super rápidos com base nas suas notas.\n3. PAINEL DOS PAIS: Ative o Modo Infantil nas estatísticas para obter o link de acompanhamento.");
         }
 
         function copiarPix() {
