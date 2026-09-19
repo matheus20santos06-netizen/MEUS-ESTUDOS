@@ -398,10 +398,18 @@
             document.getElementById(`tab-${aba}`).className = "py-2 rounded-lg bg-blue-600 text-white transition font-bold";
         }
 
+        // --- CORREÇÃO 1: FUNÇÃO QUE CONVERTE QUALQUER URL DO YOUTUBE PARA FORMATO EMBED ---
         function extrairIdYouTube(url) {
+            if (!url) return null;
             const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
             const match = url.match(regExp);
-            return (match && match[2].length === 11) ? match[2] : null;
+            if (match && match[2].length === 11) {
+                return match[2];
+            }
+            if (url.length === 11) {
+                return url;
+            }
+            return null;
         }
 
         function renderizar() {
@@ -574,6 +582,7 @@
         let aulaAtivaIndexRef = null;
         let materiaAtivaIdRef = null;
 
+        // --- CORREÇÃO DO PLAYER AO CLICAR NA AULA ---
         function carregarVideo(materiaId, index, url) {
             materiaAtivaIdRef = materiaId;
             aulaAtivaIndexRef = index;
@@ -584,6 +593,7 @@
                 container.innerHTML = `<span class="text-xs text-red-400">Link do YouTube inválido</span>`;
                 return;
             }
+            // Injeta o iframe configurado estritamente com a URL embed
             container.innerHTML = `<iframe id="iframeVideo" class="w-full h-full" src="https://www.youtube.com/embed/${videoId}?enablejsapi=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
 
             // Registrar aula assistida com horário e log
@@ -700,7 +710,7 @@
             renderizar();
         }
 
-        // --- INTEGRAÇÃO COM GEMINI API (GERAÇÃO DE QUESTÕES COM IA) ---
+        // --- INTEGRAÇÃO COM GEMINI API (GERAÇÃO DE QUESTÕES COM IA CORRIGIDA) ---
         function configurarGeminiKey() {
             if (modoObservadorParam) return;
             const key = prompt("Digite ou cole sua API Key gratuita do Google Gemini (obtenha em aistudio.google.com):", appData.config.geminiApiKey || "");
@@ -712,6 +722,7 @@
             }
         }
 
+        // --- CORREÇÃO 2: CHAMADA DA API DO GEMINI COM MODELO E FORMATO JSON ATUALIZADOS ---
         async function gerarQuestoesComIA() {
             if (modoObservadorParam) return;
 
@@ -736,9 +747,10 @@
             const qtd = prompt("Quantas questões deseja gerar?", "3") || "3";
 
             const promptSystem = `
-            Você é um gerador de questões acadêmicas. Com base EXCLUSIVAMENTE no texto fornecido a seguir, crie ${qtd} questões de múltipla escolha no formato JSON estrito.
-            
-            FORMATO OBRIGATÓRIO DE RESPOSTA (JSON puro, sem markdown, sem trechos fora do array):
+            Você é um gerador de questões acadêmicas. Com base EXCLUSIVAMENTE no texto fornecido a seguir, crie ${qtd} questões de múltipla escolha.
+            Sua resposta deve conter APENAS o array JSON sem marcadores de código markdown ou texto extra.
+
+            FORMATO OBRIGATÓRIO DE RESPOSTA:
             [
               {
                 "pergunta": "Texto da pergunta aqui",
@@ -747,7 +759,7 @@
                 "respostaCorreta": "1"
               }
             ]
-            Nota: "respostaCorreta" deve ser a posição numérica em texto (ex: "1", "2", "3" ou "4") correspondente à opção correta.
+            Nota: "respostaCorreta" deve ser a posição numérica em texto ("1", "2", "3" ou "4") correspondente à opção correta.
 
             TEXTO BASE:
             ${textoFonte}
@@ -756,18 +768,22 @@
             alert("🤖 A IA está lendo o conteúdo e criando as questões. Aguarde alguns segundos...");
 
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${appData.config.geminiApiKey}`, {
+                // Atualizado endpoint para o modelo oficial gemini-2.5-flash
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${appData.config.geminiApiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: promptSystem }] }]
+                        contents: [{ parts: [{ text: promptSystem }] }],
+                        generationConfig: {
+                            responseMimeType: "application/json" // Força o retorno estritamente em JSON
+                        }
                     })
                 });
 
                 const data = await response.json();
 
-                if (data.error) {
-                    alert("Erro na API: " + data.error.message);
+                if (!response.ok || data.error) {
+                    alert("Erro na API: " + (data.error?.message || "Erro desconhecido ao comunicar com o Gemini."));
                     return;
                 }
 
@@ -787,7 +803,7 @@
 
             } catch (err) {
                 console.error(err);
-                alert("Falha ao comunicar com a IA Gemini. Verifique sua chave API e conexão.");
+                alert("Falha ao comunicar com a IA Gemini: " + err.message);
             }
         }
 
