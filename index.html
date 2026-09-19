@@ -80,6 +80,20 @@
                 <div id="videoContainer" class="relative w-full aspect-video bg-black rounded-lg flex items-center justify-center overflow-hidden">
                     <span class="text-xs text-slate-400">Nenhuma aula selecionada</span>
                 </div>
+                
+                <!-- TEMPORIZADOR DE 15 SEGUNDOS -->
+                <div class="mt-2 bg-slate-950 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-amber-400">⏱️ Timer:</span>
+                        <span id="displayTimer15" class="text-sm font-mono font-bold text-white bg-slate-800 px-2 py-0.5 rounded">15s</span>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="iniciarTimer15()" class="bg-emerald-600 hover:bg-emerald-500 px-2 py-1 rounded text-[10px] font-bold text-white">Iniciar</button>
+                        <button onclick="pausarTimer15()" class="bg-amber-600 hover:bg-amber-500 px-2 py-1 rounded text-[10px] font-bold text-white">Pausar</button>
+                        <button onclick="resetarTimer15()" class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-[10px] font-bold text-white">Reset</button>
+                    </div>
+                </div>
+
                 <div class="flex justify-between items-center mt-2 gap-2">
                     <button onclick="mudarTempo(-10)" class="flex-1 bg-slate-800 hover:bg-slate-700 py-1.5 rounded text-xs font-bold">-10s</button>
                     <button onclick="mudarTempo(10)" class="flex-1 bg-slate-800 hover:bg-slate-700 py-1.5 rounded text-xs font-bold">+10s</button>
@@ -257,6 +271,40 @@
     <script>
         // Chave do YouTube API
         const YOUTUBE_API_KEY = "AIzaSyCfGF8gIB2YfbdauGY-CwC8cFMaIZOcuHw";
+
+        // Gerenciamento do Temporizador de 15s
+        let tempoRestante15 = 15;
+        let timer15Interval = null;
+
+        function atualizarDisplayTimer15() {
+            document.getElementById('displayTimer15').innerText = `${tempoRestante15}s`;
+        }
+
+        function iniciarTimer15() {
+            if (timer15Interval) return;
+            timer15Interval = setInterval(() => {
+                if (tempoRestante15 > 0) {
+                    tempoRestante15--;
+                    atualizarDisplayTimer15();
+                } else {
+                    pausarTimer15();
+                    alert("⏰ O tempo de 15 segundos terminou!");
+                }
+            }, 1000);
+        }
+
+        function pausarTimer15() {
+            if (timer15Interval) {
+                clearInterval(timer15Interval);
+                timer15Interval = null;
+            }
+        }
+
+        function resetarTimer15() {
+            pausarTimer15();
+            tempoRestante15 = 15;
+            atualizarDisplayTimer15();
+        }
 
         // Gerenciamento de Identidade Independente por Usuário/Dispositivo
         let userId = localStorage.getItem('meusEstudosUserId');
