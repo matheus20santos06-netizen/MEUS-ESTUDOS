@@ -89,7 +89,7 @@
             <div>
                 <div class="flex justify-between items-center mb-2">
                     <span class="text-xs font-bold text-slate-300">Matérias:</span>
-                    <button onclick="abrirModalMateria()" class="text-[11px] text-blue-400 hover:underline font-semibold">+ Nova Matéria</button>
+                    <button onclick="abrirModalMateria()" id="btnNovaMateria" class="text-[11px] text-blue-400 hover:underline font-semibold">+ Nova Matéria</button>
                 </div>
                 <div id="materiasContainer" class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                     <!-- Gerado via JS -->
@@ -106,7 +106,7 @@
                             <input type="color" id="inputCorMateriaAtual" onchange="salvarCorMateriaAtual(this.value)" class="w-4 h-4 rounded bg-transparent cursor-pointer border-0">
                         </div>
                     </div>
-                    <button onclick="abrirModalAddAula()" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Adicionar Aula</button>
+                    <button onclick="abrirModalAddAula()" id="btnAddAula" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Adicionar Aula</button>
                 </div>
                 <div id="aulasContainer" class="space-y-2 max-h-52 overflow-y-auto">
                     <!-- Gerado via JS -->
@@ -122,7 +122,7 @@
                     <div class="flex gap-2 flex-wrap">
                         <button onclick="gerarQuestoesComNotebookLM()" class="bg-purple-600 hover:bg-purple-500 text-xs px-2.5 py-1 rounded font-bold text-white flex items-center gap-1">📓 Abrir no NotebookLM</button>
                         <button onclick="iniciarSimulado()" class="bg-blue-600 hover:bg-blue-500 text-xs px-2.5 py-1 rounded font-bold">Resolver (Quiz)</button>
-                        <button onclick="abrirModalAddQuestao()" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Nova</button>
+                        <button onclick="abrirModalAddQuestao()" id="btnAddQuestao" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Nova</button>
                     </div>
                 </div>
                 <div id="questoesContainer" class="space-y-2 max-h-72 overflow-y-auto">
@@ -147,7 +147,7 @@
             <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="font-bold text-sm text-emerald-400">📖 Livros e Apostilas PDF</h2>
-                    <button onclick="abrirModalAddLivro()" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Adicionar Livro</button>
+                    <button onclick="abrirModalAddLivro()" id="btnAddLivro" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-2.5 py-1 rounded font-bold">+ Adicionar Livro</button>
                 </div>
                 <div id="livrosContainer" class="space-y-2 max-h-64 overflow-y-auto">
                     <!-- Gerado via JS -->
@@ -180,7 +180,7 @@
                 </div>
 
                 <!-- MODO INFANTIL / CONTROLE PARENTAL -->
-                <div class="pt-2 border-t border-slate-800 space-y-2">
+                <div class="pt-2 border-t border-slate-800 space-y-2" id="boxModoInfantil">
                     <div class="flex justify-between items-center">
                         <div>
                             <span class="text-xs font-bold text-emerald-400">🛡️ Modo Infantil / Controle Parental</span>
@@ -213,7 +213,7 @@
                 </div>
 
                 <!-- Personalização e Utilitários -->
-                <div class="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2">
+                <div class="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2" id="painelAcoesConfig">
                     <button onclick="abrirModalPersonalizar()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">🎨 Personalizar Cores</button>
                     <button onclick="abrirModalFundo()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">🖼️ Trocar Fundo</button>
                     <button onclick="abrirModalAjuda()" class="bg-slate-800 hover:bg-slate-700 text-xs py-2 px-3 rounded font-semibold text-left">❓ Como Usar</button>
@@ -249,84 +249,111 @@
 
     <!-- SCRIPT DO APLICATIVO -->
     <script>
-        // Chave do YouTube API
         const YOUTUBE_API_KEY = "AIzaSyCfGF8gIB2YfbdauGY-CwC8cFMaIZOcuHw";
 
-        // Gerenciamento de Identidade Independente por Usuário/Dispositivo
+        // MODO OBSERVADOR E IDENTIDADE
+        const urlParams = new URLSearchParams(window.location.search);
+        const modoObservadorParam = urlParams.get('modo') === 'observador';
+        const targetUserId = urlParams.get('alvo');
+
+        let isResetting = false;
+
         let userId = localStorage.getItem('meusEstudosUserId');
         if (!userId) {
             userId = 'user_' + Math.random().toString(36).substring(2, 9);
             localStorage.setItem('meusEstudosUserId', userId);
         }
 
-        const STORAGE_KEY = 'meusEstudosProData_' + userId;
+        let STORAGE_KEY = 'meusEstudosProData_' + userId;
 
-        // Verificar parâmetro de URL para Modo Observador
-        const urlParams = new URLSearchParams(window.location.search);
-        const modoObservadorParam = urlParams.get('modo') === 'observador';
-        const targetUserId = urlParams.get('alvo');
-
-        let appData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
-            nomeUsuario: "",
-            materias: [],
-            materiaAtual: null,
-            questoes: [],
-            notas: "",
-            livros: [],
-            estatisticas: {
-                tempoSegundos: 0,
-                questoesRespondidas: 0,
-                acertos: 0,
-                erros: 0,
-                diasRevisao: 7,
-                horaEntrada: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                horaSaida: "-",
-                aulasAssistidasLog: [],
-                historicoAcessosDias: [],
-                modoInfantilAtivo: false,
-                ultimoAcesso: new Date().toDateString()
-            },
-            config: {
-                corVideo: '#3b82f6',
-                corBox: '#1e293b',
-                corTexto: '#ffffff',
-                bgImagem: '',
-                bgCor: '#0f172a'
-            }
-        };
-
-        // Registrar controle de frequência diária
-        const hojeStr = new Date().toLocaleDateString();
-        if (!appData.estatisticas.historicoAcessosDias.includes(hojeStr) && !modoObservadorParam) {
-            appData.estatisticas.historicoAcessosDias.push(hojeStr);
-            salvarDados();
+        if (modoObservadorParam && targetUserId) {
+            STORAGE_KEY = 'meusEstudosProData_' + targetUserId;
         }
 
-        // Registrar saída ao fechar janela
+        function getEstruturaPadraoData() {
+            return {
+                nomeUsuario: "",
+                materias: [],
+                materiaAtual: null,
+                questoes: [],
+                notas: "",
+                livros: [],
+                estatisticas: {
+                    tempoSegundos: 0,
+                    questoesRespondidas: 0,
+                    acertos: 0,
+                    erros: 0,
+                    diasRevisao: 7,
+                    horaEntrada: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    horaSaida: "-",
+                    aulasAssistidasLog: [],
+                    historicoAcessosDias: [],
+                    modoInfantilAtivo: false,
+                    ultimoAcesso: new Date().toDateString()
+                },
+                config: {
+                    corVideo: '#3b82f6',
+                    corBox: '#1e293b',
+                    corTexto: '#ffffff',
+                    bgImagem: '',
+                    bgCor: '#0f172a'
+                }
+            };
+        }
+
+        function carregarDados() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return getEstruturaPadraoData();
+            try {
+                return JSON.parse(raw);
+            } catch(e) {
+                return getEstruturaPadraoData();
+            }
+        }
+
+        let appData = carregarDados();
+
+        // Se estiver no Modo Observador e os dados não existirem
+        if (modoObservadorParam && !localStorage.getItem(STORAGE_KEY)) {
+            alert("Atenção: Não foram encontrados dados cadastrados para este estudante ou o vínculo não está correto.");
+        }
+
+        // Frequência Diária
+        const hojeStr = new Date().toLocaleDateString();
+        if (!modoObservadorParam && appData.estatisticas) {
+            if (!appData.estatisticas.historicoAcessosDias) appData.estatisticas.historicoAcessosDias = [];
+            if (!appData.estatisticas.historicoAcessosDias.includes(hojeStr)) {
+                appData.estatisticas.historicoAcessosDias.push(hojeStr);
+                salvarDados();
+            }
+        }
+
+        // Hora Saída
         window.addEventListener('beforeunload', () => {
-            if (!modoObservadorParam) {
+            if (!modoObservadorParam && !isResetting) {
                 appData.estatisticas.horaSaida = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 salvarDados();
             }
         });
 
-        // Configurar nome do usuário se não existir
+        // Sincronização em Tempo Real para Modo Observador no mesmo navegador
+        window.addEventListener('storage', (e) => {
+            if (e.key === STORAGE_KEY) {
+                appData = carregarDados();
+                renderizar();
+            }
+        });
+
+        // Solicitar Nome
         if (!appData.nomeUsuario && !modoObservadorParam) {
             let nomeTemp = prompt("Seja bem-vindo(a)! Como você deseja ser chamado(a)?");
             appData.nomeUsuario = nomeTemp ? nomeTemp.trim() : "Estudante";
             salvarDados();
         }
 
-        // Se estiver no modo observador, carregar dados do aluno alvo
-        if (modoObservadorParam && targetUserId) {
-            const dadosAlvo = JSON.parse(localStorage.getItem('meusEstudosProData_' + targetUserId));
-            if (dadosAlvo) {
-                appData = dadosAlvo;
-            }
-        }
-
+        // Contador de tempo
         setInterval(() => {
-            if (!modoObservadorParam) {
+            if (!modoObservadorParam && !isResetting) {
                 appData.estatisticas.tempoSegundos++;
                 salvarDados();
                 atualizarEstatisticasUI();
@@ -334,21 +361,23 @@
         }, 1000);
 
         function salvarDados() {
-            if (!modoObservadorParam) {
+            if (!modoObservadorParam && !isResetting) {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
             }
         }
 
         function aplicarConfiguracoes() {
-            document.documentElement.style.setProperty('--border-video', appData.config.corVideo);
-            document.documentElement.style.setProperty('--border-box', appData.config.corBox);
-            document.documentElement.style.setProperty('--text-box', appData.config.corTexto);
+            document.documentElement.style.setProperty('--border-video', appData.config.corVideo || '#3b82f6');
+            document.documentElement.style.setProperty('--border-box', appData.config.corBox || '#1e293b');
+            document.documentElement.style.setProperty('--text-box', appData.config.corTexto || '#ffffff');
+            
             if(appData.config.bgImagem) {
                 document.body.style.backgroundImage = `url('${appData.config.bgImagem}')`;
             } else {
                 document.body.style.backgroundImage = 'none';
-                document.body.style.backgroundColor = appData.config.bgCor;
+                document.body.style.backgroundColor = appData.config.bgCor || '#0f172a';
             }
+
             document.getElementById('blocoNotas').value = appData.notas || '';
             document.getElementById('inputDiasRevisao').value = appData.estatisticas.diasRevisao || 7;
 
@@ -370,6 +399,13 @@
                 if (modoObservadorParam) {
                     saudacaoEl.innerText = `👁️ MODO OBSERVADOR (Painel do Responsável - Aluno: ${appData.nomeUsuario || 'Estudante'})`;
                     saudacaoEl.className = "mt-1 text-xs text-amber-400 font-bold";
+                    
+                    // Ocultar botões de modificação no modo observador
+                    ['btnNovaMateria', 'btnAddAula', 'btnAddQuestao', 'btnAddLivro', 'boxModoInfantil', 'painelAcoesConfig'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if(el) el.classList.add('hidden');
+                    });
+                    document.getElementById('blocoNotas').readOnly = true;
                 } else {
                     saudacaoEl.innerText = `👋 Olá, ${appData.nomeUsuario || 'Estudante'}! Seja muito bem-vindo(a).`;
                 }
@@ -389,12 +425,8 @@
             if (!url) return null;
             const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
             const match = url.match(regExp);
-            if (match && match[2].length === 11) {
-                return match[2];
-            }
-            if (url.length === 11) {
-                return url;
-            }
+            if (match && match[2].length === 11) return match[2];
+            if (url.length === 11) return url;
             return null;
         }
 
@@ -406,7 +438,7 @@
             atualizarEstatisticasUI();
         }
 
-        // --- BUSCA YOUTUBE ---
+        // BUSCA YOUTUBE
         async function buscarVideosYouTube() {
             const query = document.getElementById('inputBuscaYouTube').value.trim();
             const containerRes = document.getElementById('resultadosYouTube');
@@ -467,7 +499,7 @@
 
             const containerCorMateria = document.getElementById('containerCorMateria');
 
-            if (appData.materias.length === 0) {
+            if (!appData.materias || appData.materias.length === 0) {
                 containerMat.innerHTML = `<span class="text-xs text-slate-500 py-1">Nenhuma matéria criada.</span>`;
                 document.getElementById('tituloMateriaAtual').innerText = "Aulas (Nenhuma matéria)";
                 document.getElementById('aulasContainer').innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Crie uma matéria para adicionar aulas.</p>`;
@@ -503,7 +535,7 @@
 
             document.getElementById('tituloMateriaAtual').innerText = `Aulas - ${materia.nome}`;
             
-            if (containerCorMateria) {
+            if (containerCorMateria && !modoObservadorParam) {
                 containerCorMateria.classList.remove('hidden');
                 containerCorMateria.classList.add('flex');
                 document.getElementById('inputCorMateriaAtual').value = materia.corCustom || '#2563eb';
@@ -512,7 +544,7 @@
             const containerAulas = document.getElementById('aulasContainer');
             containerAulas.innerHTML = '';
 
-            if (materia.aulas.length === 0) {
+            if (!materia.aulas || materia.aulas.length === 0) {
                 containerAulas.innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Nenhuma aula cadastrada nesta matéria.</p>`;
                 return;
             }
@@ -562,6 +594,7 @@
                 const mat = appData.materias.find(m => m.id === materiaId);
                 if (mat && mat.aulas[index]) {
                     mat.aulas[index].ultimoMinuto = "Assistida/Em andamento";
+                    if (!appData.estatisticas.aulasAssistidasLog) appData.estatisticas.aulasAssistidasLog = [];
                     appData.estatisticas.aulasAssistidasLog.push({
                         materia: mat.nome,
                         aula: mat.aulas[index].titulo,
@@ -584,7 +617,7 @@
             if (modoObservadorParam) return;
             const nome = prompt("Digite o nome da nova matéria (ex: Português, Matemática, Física):");
             if (nome) {
-                const id = nome.toLowerCase().replace(/\s+/g, '-');
+                const id = 'mat_' + Math.random().toString(36).substring(2, 7);
                 appData.materias.push({ id, nome: nome.toUpperCase(), aulas: [], corCustom: '' });
                 appData.materiaAtual = id;
                 salvarDados();
@@ -669,7 +702,7 @@
             renderizar();
         }
 
-        // --- INTEGRAÇÃO COM NOTEBOOKLM ---
+        // INTEGRAÇÃO COM NOTEBOOKLM
         function gerarQuestoesComNotebookLM() {
             if (modoObservadorParam) return;
 
@@ -714,7 +747,7 @@ ${temaOuTexto}`;
             const container = document.getElementById('questoesContainer');
             container.innerHTML = '';
 
-            if (appData.questoes.length === 0) {
+            if (!appData.questoes || appData.questoes.length === 0) {
                 container.innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Nenhuma questão cadastrada.</p>`;
                 return;
             }
@@ -741,7 +774,7 @@ ${temaOuTexto}`;
         }
 
         function iniciarSimulado() {
-            if (appData.questoes.length === 0) {
+            if (!appData.questoes || appData.questoes.length === 0) {
                 alert("Não há questões cadastradas para resolver!");
                 return;
             }
@@ -883,6 +916,7 @@ ${temaOuTexto}`;
             const url = prompt("Cole o link direto do arquivo PDF (URL):");
             if (!url) return;
 
+            if(!appData.livros) appData.livros = [];
             appData.livros.push({ titulo, url });
             salvarDados();
             renderizarLivros();
@@ -892,7 +926,7 @@ ${temaOuTexto}`;
             const container = document.getElementById('livrosContainer');
             container.innerHTML = '';
 
-            if (appData.livros.length === 0) {
+            if (!appData.livros || appData.livros.length === 0) {
                 container.innerHTML = `<p class="text-xs text-slate-500 text-center py-2">Nenhum livro cadastrado.</p>`;
                 return;
             }
@@ -919,11 +953,11 @@ ${temaOuTexto}`;
         }
 
         function atualizarEstatisticasUI() {
-            const mins = Math.floor(appData.estatisticas.tempoSegundos / 60);
+            const mins = Math.floor((appData.estatisticas.tempoSegundos || 0) / 60);
             document.getElementById('statTempoUso').innerText = `${mins} min`;
-            document.getElementById('statQtdQuest').innerText = appData.estatisticas.questoesRespondidas;
+            document.getElementById('statQtdQuest').innerText = appData.estatisticas.questoesRespondidas || 0;
 
-            const totalQ = appData.estatisticas.acertos + appData.estatisticas.erros;
+            const totalQ = (appData.estatisticas.acertos || 0) + (appData.estatisticas.erros || 0);
             const taxaAcerto = totalQ > 0 ? Math.round((appData.estatisticas.acertos / totalQ) * 100) : 0;
             const taxaErro = totalQ > 0 ? 100 - taxaAcerto : 0;
 
@@ -939,9 +973,9 @@ ${temaOuTexto}`;
                     document.querySelector('#secao-estatisticas > div').appendChild(divObs);
                 }
                 
-                let logAulasHtml = appData.estatisticas.aulasAssistidasLog.map(a => `<li>• [${a.data || 'Hoje'} - ${a.horario}] ${a.materia}: ${a.aula}</li>`).join('') || '<li>Nenhuma aula assistida registrada.</li>';
+                let logAulasHtml = (appData.estatisticas.aulasAssistidasLog || []).map(a => `<li>• [${a.data || 'Hoje'} - ${a.horario}] ${a.materia}: ${a.aula}</li>`).join('') || '<li>Nenhuma aula assistida registrada.</li>';
 
-                let freqDias = appData.estatisticas.historicoAcessosDias.length || 1;
+                let freqDias = (appData.estatisticas.historicoAcessosDias || []).length || 1;
 
                 divObs.innerHTML = `
                     <div class="border-b border-slate-800 pb-2">
@@ -1069,8 +1103,11 @@ ${temaOuTexto}`;
 
         function confirmarResetTotal() {
             if (modoObservadorParam) return;
-            if (confirm("⚠️ ATENÇÃO: Deseja realmente apagar todos os dados, notas, questões e reiniciar o aplicativo?")) {
+            if (confirm("⚠️ ATENÇÃO: Deseja realmente apagar todos os dados, notas, questões e reiniciar o aplicativo para o padrão inicial?")) {
+                isResetting = true;
                 localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem('meusEstudosUserId');
+                appData = getEstruturaPadraoData();
                 location.reload();
             }
         }
